@@ -13,12 +13,12 @@ inductive Path where
   | body (next : Path) : Path
   | value (next : Path) : Path
 
-def pathToSubExpr (expr : Expr) (path : Path) : MetaM SubExpr := do
+def pathToSubExpr (expr : Expr) (path : Path) : MetaM SubExpr.Pos := do
   go expr path .root
 where
-  go (expr : Expr) (path : Path) (acc : SubExpr.Pos) : MetaM SubExpr :=
+  go (expr : Expr) (path : Path) (acc : SubExpr.Pos) : MetaM SubExpr.Pos :=
     match path with
-    | .node => return ⟨expr, acc⟩
+    | .node => return acc
     | .type next =>
       match expr.consumeMData with
       | .letE _ t _ _ _ => go t next acc.pushLetVarType
