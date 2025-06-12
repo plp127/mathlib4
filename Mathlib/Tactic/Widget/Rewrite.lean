@@ -14,12 +14,11 @@ inductive Path where
   | value (next : Path) : Path
 
 def pathToSubExpr (expr : Expr) (path : Path) : MetaM SubExpr := do
-  let pos ← go expr path .root
-  return ⟨expr, pos⟩
+  go expr path .root
 where
-  go (expr : Expr) (path : Path) (acc : SubExpr.Pos) : MetaM SubExpr.Pos :=
+  go (expr : Expr) (path : Path) (acc : SubExpr.Pos) : MetaM SubExpr :=
     match path with
-    | .node => pure acc
+    | .node => return ⟨expr, acc⟩
     | .type next =>
       match expr.consumeMData with
       | .letE _ t _ _ _ => go t next acc.pushLetVarType
@@ -61,7 +60,7 @@ where
     | .app (n + 1) false next =>
       expr.consumeMData.withApp fun f args => do
         let throw :=
-          throwError m!"invalid implicit arg {n} access on{indentExpr expr}"
+          throwError m!"invalid explicit arg {n} access on{indentExpr expr}"
         let kinds ← PrettyPrinter.Delaborator.getParamKinds f args
         if let .error i := kinds.foldl
           (fun l k => l.bind fun (v, i) =>
@@ -76,6 +75,6 @@ where
     match e, k with
     | .app _ a, 0 => pure a
     | .app f _, k + 1 => getIdxExplicit f n k
-    | _, _ => throwError m!"invalid explicit arg {n} access on{indentExpr expr}"
+    | _, _ => throwError m!"invalid implicit arg {n} access on{indentExpr expr}"
 
 end Mathlib.Tactic.Widget.Rewrite
