@@ -27,13 +27,19 @@ where
       | _ => throwError m!"invalid binding domain access on{indentExpr expr}"
     | .body next =>
       match expr.consumeMData with
-      | .letE _ _ _ b _ => do
-
-        go b next acc.pushLetBody
-      | .lam _ _ b _
-      | .forallE _ _ b _ => do
-
-        go b next acc.pushBindingBody
+      | .letE n t v b nonDep => do
+        let lctx ← getLCtx
+        let fvarId ← mkFreshFVarId
+        let lctx := lctx.mkLetDecl fvarId n t v nonDep
+        withReader (fun ctx => {ctx with lctx})
+          (go b next acc.pushLetBody)
+      | .lam n t b bi
+      | .forallE n t b bi => do
+        let lctx ← getLCtx
+        let fvarId ← mkFreshFVarId
+        let lctx := lctx.mkLocalDecl fvarId n t bi
+        withReader (fun ctx => {ctx with lctx})
+          (go b next acc.pushBindingBody)
       | _ => throwError m!"invalid binding body access on{indentExpr expr}"
     | .value next =>
       match expr.consumeMData with
