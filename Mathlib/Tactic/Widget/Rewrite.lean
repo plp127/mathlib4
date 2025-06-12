@@ -8,7 +8,7 @@ inductive Path where
   | node : Path
   | arg (arg : Nat) (all : Bool) (next : Path) : Path
   | proj (next : Path) : Path
-  | fun (next : Path) : Path
+  | fun (depth : Nat) (next : Path) : Path
   | type (next : Path) : Path
   | body (next : Path) : Path
   | value (next : Path) : Path
@@ -49,16 +49,17 @@ where
       match expr.consumeMData with
       | .proj _ _ e => go e next acc.pushProj
       | _ => throwError m!"invalid proj access on{indentExpr expr}"
-    | .fun next =>
-      match expr.consumeMData with
-      | .app f _ => go f next acc.pushAppFn
-      | _ => throwError m!"invalid fun access on{indentExpr expr}"
-    | arg 0 _ next => go expr.getAppFn next (acc.pushNaryFn expr.getAppNumArgs)
+    | .fun n next =>
+      if expr.consumeMData.getAppNumArgs < n then
+        throwError m!"invalid fun access on{indentExpr expr}"
+      else go (expr.consumeMData.getBoundedAppFn n) next (acc.pushNaryFn n)
+    | arg 0 _ next =>
+      go expr.consumeMData.getAppFn next (acc.pushNaryFn expr.consumeMData.getAppNumArgs)
     | arg (n + 1) true next => do
-      if expr.getAppNumArgs < n + 1 then
+      if expr.consumeMData.getAppNumArgs < n + 1 then
         throwError m!"invalid arg @{n + 1} access on{indentExpr expr}"
-      let c ← getIdxAll expr.consumeMData (n + 1) (expr.getAppNumArgs - (n + 1))
-      go c next (acc.pushNaryArg expr.getAppNumArgs n)
+      let c ← getIdxAll expr.consumeMData (n + 1) (expr.consumeMData.getAppNumArgs - (n + 1))
+      go c next (acc.pushNaryArg expr.consumeMData.getAppNumArgs n)
     | arg (n + 1) false next =>
       expr.consumeMData.withApp fun f args => do
         let err :=
@@ -70,7 +71,7 @@ where
               if v = n then throw i else pure (v + 1, i + 1)
             else pure (v, i + 1)) (0, 0) then
           if let some c := args[i]? then
-            go c next (acc.pushNaryArg expr.getAppNumArgs i)
+            go c next (acc.pushNaryArg expr.consumeMData.getAppNumArgs i)
           else err
         else err
   getIdxAll (e : Expr) (n k : Nat) : MetaM Expr :=
@@ -123,7 +124,7 @@ where
     match e with
     | .app f a =>
       if let some u := n then appT f p i (a :: acc) (some u.succ)
-      else if h : i = Fin.last p.size then pure (Nat.repeat Path.fun acc.length .node)
+      else if h : i = Fin.last p.size then pure (Path.fun acc.length .node)
       else let i := i.castLT (Fin.val_lt_last h)
       if p[i] = 0 then appT f p i.succ (a :: acc) none
       else if p[i] = 1 then appT f p i.succ (a :: acc) (some ⟨0, acc.length.zero_lt_succ⟩)
