@@ -18,7 +18,7 @@ def Path.toSubExprPos (expr : Expr) (path : Path) : MetaM SubExpr.Pos := do
 where
   go (expr : Expr) (path : Path) (acc : SubExpr.Pos) : MetaM SubExpr.Pos :=
     match path with
-    | .node => return acc
+    | .node => pure acc
     | .type next =>
       match expr.consumeMData with
       | .letE _ t _ _ _ => go t next acc.pushLetVarType
