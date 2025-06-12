@@ -27,9 +27,13 @@ where
       | _ => throwError m!"invalid binding domain access on{indentExpr expr}"
     | .body next =>
       match expr.consumeMData with
-      | .letE _ _ _ b _ => go b next acc.pushLetBody
+      | .letE _ _ _ b _ => do
+
+        go b next acc.pushLetBody
       | .lam _ _ b _
-      | .forallE _ _ b _ => go b next acc.pushBindingBody
+      | .forallE _ _ b _ => do
+
+        go b next acc.pushBindingBody
       | _ => throwError m!"invalid binding body access on{indentExpr expr}"
     | .value next =>
       match expr.consumeMData with
@@ -43,15 +47,28 @@ where
       match expr.consumeMData with
       | .app f _ => go f next acc.pushAppFn
       | _ => throwError m!"invalid fun access on{indentExpr expr}"
-    | .app 0 true next => go expr.getAppFn' next (acc.pushNaryFn expr.getAppNumArgs')
+    | .app 0 _ next => go expr.getAppFn next (acc.pushNaryFn expr.getAppNumArgs)
     | .app (n + 1) true next => do
-      let c ← getIdxExplicit expr (expr.getAppNumArgs' - n - 1)
-      go c next (acc.pushNaryArg expr.getAppNumArgs' n)
-    | _ => failure
-  getIdxExplicit (e : Expr) (n : Nat) : MetaM Expr :=
-    match e.consumeMData, n with
+      let c ← getIdxExplicit expr.consumeMData (n + 1) (expr.getAppNumArgs - n - 1)
+      go c next (acc.pushNaryArg expr.getAppNumArgs n)
+    | .app (n + 1) false next =>
+      expr.consumeMData.withApp fun f args => do
+        let throw :=
+          throwError m!"invalid implicit arg {n} access on{indentExpr expr}"
+        let kinds ← PrettyPrinter.Delaborator.getParamKinds f args
+        if let .error i := kinds.foldl
+          (fun l k => l.bind fun (v, i) =>
+            if let .default := k.bInfo then
+              if v = n then .error i else .ok (v + 1, i + 1)
+            else .ok (v, i + 1)) (Except.ok (0, 0)) then
+          if let some c := args[i]? then
+            go c next (acc.pushNaryArg expr.getAppNumArgs i)
+          else throw
+        else throw
+  getIdxExplicit (e : Expr) (n k : Nat) : MetaM Expr :=
+    match e, k with
     | .app _ a, 0 => pure a
-    | .app f _, n + 1 => getIdxExplicit f n
-    | _, _ => failure
+    | .app f _, k + 1 => getIdxExplicit f n k
+    | _, _ => throwError m!"invalid explicit arg {n} access on{indentExpr expr}"
 
 end Mathlib.Tactic.Widget.Rewrite
