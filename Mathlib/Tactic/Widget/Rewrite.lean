@@ -13,8 +13,9 @@ inductive Path where
   | body (next : Path) : Path
   | value (next : Path) : Path
 
-def pathToSubExpr (expr : Expr) (path : Path) : MetaM SubExpr.Pos :=
-  go expr path .root
+def pathToSubExpr (expr : Expr) (path : Path) : MetaM SubExpr := do
+  let pos ← go expr path .root
+  return ⟨expr, pos⟩
 where
   go (expr : Expr) (path : Path) (acc : SubExpr.Pos) : MetaM SubExpr.Pos :=
     match path with
