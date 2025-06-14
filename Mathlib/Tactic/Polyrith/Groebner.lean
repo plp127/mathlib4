@@ -72,4 +72,11 @@ def Polynomial₀.S {𝕜 n cmp} [Mul 𝕜] [Sub 𝕜] [Zero 𝕜] [BEq 𝕜]
   q.leadCoeff * (q.leadMon.ldiv (p.leadMon) * p.val) -
   p.leadCoeff * (p.leadMon.ldiv (q.leadMon) * q.val)
 
+def Polynomial₀.dvd {𝕜 n cmp} (p q : Polynomial₀ 𝕜 (Monomial n) cmp) : Bool :=
+  (List.Vector.map₂ (decide <| · ≤ ·) p.leadMon.toVec q.leadMon.toVec).toList.all id
+
+def Polynomial₀.redₗ {𝕜 n cmp} [Mul 𝕜] [Sub 𝕜] [Zero 𝕜] [BEq 𝕜]
+    (p q : Polynomial₀ 𝕜 (Monomial n) cmp) : Polynomial 𝕜 (Monomial n) cmp :=
+  q.leadCoeff * p.val - p.leadCoeff * ((p.leadMon.ldiv q.leadMon) * q.val)
+
 end Tactic.Polyrith.Groebner
