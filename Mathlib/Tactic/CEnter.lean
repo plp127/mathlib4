@@ -87,6 +87,8 @@ where
   go (expr : Expr) (pos : Array Nat) (i : Fin (pos.size + 1)) : MetaM Path :=
     if h : i = Fin.last pos.size then pure .node else
     let i := i.castLT (Fin.val_lt_last h)
+    if pos[i] = SubExpr.Pos.typeCoord then
+      throwError m!"cannot enter type of expression{indentExpr expr}" else
     let err :=
       throwError m!"cannot access position {pos[i]} of{indentExpr expr}"
     match expr with
@@ -102,22 +104,22 @@ where
     | .letE n t v b nonDep =>
       if pos[i] = 0 then Path.type <$> go t pos i.succ else
       if pos[i] = 1 then Path.value <$> go v pos i.succ else
-      if pos[i] = 2 then Path.body <$> do
+      if pos[i] = 2 then do
         let lctx ← getLCtx
         let fvarId ← mkFreshFVarId
         let lctx := lctx.mkLetDecl fvarId n t v nonDep
         withReader (fun ctx => {ctx with lctx})
-          (go (b.instantiate1 (.fvar fvarId)) pos i.succ) else
+          (Path.body <$> go (b.instantiate1 (.fvar fvarId)) pos i.succ) else
       err
     | .forallE n t b bi
     | .lam n t b bi =>
       if pos[i] = 0 then Path.type <$> go t pos i.succ else
-      if pos[i] = 1 then Path.body <$> do
+      if pos[i] = 1 then do
         let lctx ← getLCtx
         let fvarId ← mkFreshFVarId
         let lctx := lctx.mkLocalDecl fvarId n t bi
         withReader (fun ctx => {ctx with lctx})
-          (go (b.instantiate1 (.fvar fvarId)) pos i.succ) else
+          (Path.body <$> go (b.instantiate1 (.fvar fvarId)) pos i.succ) else
       err
     | .app .. => appT expr pos i.castSucc [] none
   appT (e : Expr) (p : Array Nat) (i : Fin (p.size + 1))
