@@ -143,7 +143,7 @@ declare_syntax_cat cLoc
 
 syntax (name := cNode) "." : cLoc
 syntax (name := cProj) "-" cLoc : cLoc
-syntax (name := cFun) "!" num ";" cLoc : cLoc
+syntax (name := cFun) num "," cLoc : cLoc
 syntax (name := cType) "<" cLoc : cLoc
 syntax (name := cBody) ">" cLoc : cLoc
 syntax (name := cValue) "/" cLoc : cLoc
@@ -153,7 +153,7 @@ partial def parseCLoc (stx : TSyntax `cLoc) : Option Path :=
   match stx with
   | `(cLoc| .) => some Path.node
   | `(cLoc| -$loc) => (parseCLoc loc).map Path.proj
-  | `(cLoc| !$n;$loc) => (parseCLoc loc).map (Path.fun n.getNat)
+  | `(cLoc| $n:num,$loc) => (parseCLoc loc).map (Path.fun n.getNat)
   | `(cLoc| <$loc) => (parseCLoc loc).map Path.type
   | `(cLoc| >$loc) => (parseCLoc loc).map Path.body
   | `(cLoc| /$loc) => (parseCLoc loc).map Path.value
@@ -165,7 +165,7 @@ def reprPath (path : Path) : TSyntax `cLoc := Unhygienic.run do
   match path with
   | .node => `(cLoc| .)
   | .proj next => `(cLoc| -$(reprPath next))
-  | .fun n next => `(cLoc| !$(Syntax.mkNatLit n);$(reprPath next))
+  | .fun n next => `(cLoc| $(Syntax.mkNatLit n):num,$(reprPath next))
   | .type next => `(cLoc| <$(reprPath next))
   | .body next => `(cLoc| >$(reprPath next))
   | .value next => `(cLoc| /$(reprPath next))
@@ -179,7 +179,7 @@ def formatPath (path : Path) : String :=
   match path with
   | .node => s!"."
   | .proj next => s!"-{formatPath next}"
-  | .fun n next => s!"!{n};{formatPath next}"
+  | .fun n next => s!"{n},{formatPath next}"
   | .type next => s!"<{formatPath next}"
   | .body next => s!">{formatPath next}"
   | .value next => s!"/{formatPath next}"
