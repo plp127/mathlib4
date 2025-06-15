@@ -12,6 +12,7 @@ inductive Path where
   | type (next : Path) : Path
   | body (next : Path) : Path
   | value (next : Path) : Path
+deriving Inhabited, DecidableEq
 
 def Path.toSubExprPos (expr : Expr) (path : Path) : MetaM SubExpr.Pos := do
   go expr path .root
@@ -137,5 +138,58 @@ where
             false <$> go acc[u] p i
         else arg (u + 1) true <$> go acc[u] p i
       else arg 0 false <$> go e p i
+
+declare_syntax_cat cLoc
+
+syntax (name := cNode) "." : cLoc
+syntax (name := cProj) "-" cLoc : cLoc
+syntax (name := cFun) "!" num ";" cLoc : cLoc
+syntax (name := cType) "<" cLoc : cLoc
+syntax (name := cBody) ">" cLoc : cLoc
+syntax (name := cValue) "/" cLoc : cLoc
+syntax (name := cArg) "@"? num ";" cLoc : cLoc
+
+partial def parseCLoc (stx : TSyntax `cLoc) : Option Path :=
+  match stx with
+  | `(cLoc| .) => some Path.node
+  | `(cLoc| -$loc) => (parseCLoc loc).map Path.proj
+  | `(cLoc| !$n;$loc) => (parseCLoc loc).map (Path.fun n.getNat)
+  | `(cLoc| <$loc) => (parseCLoc loc).map Path.type
+  | `(cLoc| >$loc) => (parseCLoc loc).map Path.body
+  | `(cLoc| /$loc) => (parseCLoc loc).map Path.value
+  | `(cLoc| @$n;$loc) => (parseCLoc loc).map (Path.arg n.getNat true)
+  | `(cLoc| $n:num;$loc) => (parseCLoc loc).map (Path.arg n.getNat false)
+  | _ => none
+
+def reprPath (path : Path) : TSyntax `cLoc := Unhygienic.run do
+  match path with
+  | .node => `(cLoc| .)
+  | .proj next => `(cLoc| -$(reprPath next))
+  | .fun n next => `(cLoc| !$(Syntax.mkNatLit n);$(reprPath next))
+  | .type next => `(cLoc| <$(reprPath next))
+  | .body next => `(cLoc| >$(reprPath next))
+  | .value next => `(cLoc| /$(reprPath next))
+  | .arg n true next => `(cLoc| @$(Syntax.mkNatLit n);$(reprPath next))
+  | .arg n false next => `(cLoc| $(Syntax.mkNatLit n):num;$(reprPath next))
+
+instance : Quote Path `cLoc where
+  quote := reprPath
+
+def formatPath (path : Path) : String :=
+  match path with
+  | .node => s!"."
+  | .proj next => s!"-{formatPath next}"
+  | .fun n next => s!"!{n};{formatPath next}"
+  | .type next => s!"<{formatPath next}"
+  | .body next => s!">{formatPath next}"
+  | .value next => s!"/{formatPath next}"
+  | .arg n true next => s!"@{n};{formatPath next}"
+  | .arg n false next => s!"{n};{formatPath next}"
+
+instance : ToString Path where
+  toString := formatPath
+
+instance : Repr Path where
+  reprPrec path _ := .text (formatPath path)
 
 end Mathlib.Tactic.Widget.Rewrite
