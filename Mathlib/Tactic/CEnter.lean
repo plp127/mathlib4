@@ -2,7 +2,7 @@ import Lean
 
 open Lean
 
-namespace Mathlib.Tactic.Widget.Rewrite
+namespace CEnter
 
 inductive Path where
   | node : Path
@@ -192,4 +192,4 @@ instance : ToString Path where
 instance : Repr Path where
   reprPrec path _ := .text (formatPath path)
 
-end Mathlib.Tactic.Widget.Rewrite
+end CEnter
