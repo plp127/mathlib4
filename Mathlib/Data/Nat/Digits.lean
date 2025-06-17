@@ -913,4 +913,39 @@ unsafe def eval : expr → tactic (expr × expr)
 
 end NormDigits
 
+section computation
+
+def digitsC (b n : Nat) : List Nat :=
+  if h₀ : b = 0 then if n = 0 then [] else [n]
+  else if h₁ : b = 1 then List.replicate n 1
+  else go ⟨n, by omega⟩ []
+where
+  go (n : Subtype fun _ : Nat => 1 < b) (acc : List Nat) : List Nat :=
+    if h : n.1 = 0 then acc.reverse else
+      have : n.1 / b < n.1 := Nat.div_lt_self (by omega) n.2
+      go ⟨n.1 / b, n.2⟩ (n.1 % b :: acc)
+  termination_by n.1
+
+theorem digitsC.go_spec (b : Nat) (n : Subtype fun _ : Nat => 1 < b) (acc : List Nat) :
+    digitsC.go b n acc = acc.reverse ++ digits b n.1 := by
+  fun_induction go b n acc with
+  | case1 _ _ h => simp [h]
+  | case2 n _ hn _ ih =>
+    rw [ih, List.reverse_cons, List.append_assoc,
+      List.singleton_append, ← Nat.digits_def' n.2 (by omega)]
+
+@[csimp]
+theorem digitsC_eq_digits : digitsC = digits := by
+  funext b n
+  by_cases h₀ : b = 0
+  · subst h₀
+    cases n <;> rfl
+  by_cases h₁ : b = 1
+  · subst h₁
+    rfl
+  rw [digitsC, dif_neg h₀, dif_neg h₁, digitsC.go_spec,
+    List.reverse_nil, List.nil_append]
+
+end computation
+
 end Nat
