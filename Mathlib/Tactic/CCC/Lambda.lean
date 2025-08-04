@@ -240,31 +240,32 @@ def LambdaTerm.instantiate {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (n
 
 def Typing.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
     {ctx : List (Object ι)} {t : LambdaTerm ι κ} {tt : Object ι} (tu : Object ι)
-    (sat : Typing ζ (app ++ ctx) t tt) :
-    Typing ζ (app ++ tu :: ctx) (t.incrementBVars app.length) tt :=
+    (sat : Typing ζ (app ++ ctx) t tt) (n : Nat) (hn : app.length = n) :
+    Typing ζ (app ++ tu :: ctx) (t.incrementBVars n) tt :=
   match sat with
   | .of k _ => .of k _
   | .unit _ => .unit _
-  | .prod l r => .prod (l.incrementBVars app tu) (r.incrementBVars app tu)
-  | .lam b => .lam (b.incrementBVars (_ :: app) tu)
-  | .app f a => .app (f.incrementBVars app tu) (a.incrementBVars app tu)
-  | .left u => .left (u.incrementBVars app tu)
-  | .right u => .right (u.incrementBVars app tu)
+  | .prod l r => .prod (l.incrementBVars app tu n hn) (r.incrementBVars app tu n hn)
+  | .lam b => .lam (b.incrementBVars (_ :: app) tu (n + 1) (congrArg Nat.succ hn))
+  | .app f a => .app (f.incrementBVars app tu n hn) (a.incrementBVars app tu n hn)
+  | .left u => .left (u.incrementBVars app tu n hn)
+  | .right u => .right (u.incrementBVars app tu n hn)
   | .bvar h => iteInduction (motive := fun i => Typing ζ (app ++ tu :: ctx) i tt)
     (fun hl => .bvar (by grind)) (fun hn => .bvar (by grind))
 
 def Typing.instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
     {ctx : List (Object ι)} {s t : LambdaTerm ι κ} {ts tt : Object ι}
-    (satt : Typing ζ (app ++ ts :: ctx) t tt) (sats : Typing ζ (app ++ ctx) s ts) :
-    Typing ζ (app ++ ctx) (t.instantiate app.length s) tt :=
+    (satt : Typing ζ (app ++ ts :: ctx) t tt) (sats : Typing ζ (app ++ ctx) s ts)
+    (n : Nat) (hn : app.length = n) : Typing ζ (app ++ ctx) (t.instantiate n s) tt :=
   match satt with
   | .of k _ => .of k _
   | .unit _ => .unit _
-  | .prod l r => .prod (l.instantiate app sats) (r.instantiate app sats)
-  | .lam b => .lam (b.instantiate (_ :: app) (sats.incrementBVars [] _))
-  | .app f a => .app (f.instantiate app sats) (a.instantiate app sats)
-  | .left u => .left (u.instantiate app sats)
-  | .right u => .right (u.instantiate app sats)
+  | .prod l r => .prod (l.instantiate app sats n hn) (r.instantiate app sats n hn)
+  | .lam b => .lam (b.instantiate (_ :: app) (sats.incrementBVars [] _ 0 (Eq.refl 0))
+    (n + 1) (congrArg Nat.succ hn))
+  | .app f a => .app (f.instantiate app sats n hn) (a.instantiate app sats n hn)
+  | .left u => .left (u.instantiate app sats n hn)
+  | .right u => .right (u.instantiate app sats n hn)
   | .bvar (deBrujinIndex := n) h =>
     iteInduction (motive := fun i => Typing ζ (app ++ ctx) i tt)
       (fun hl => (show ts = tt by grind) ▸ sats)
@@ -318,10 +319,10 @@ inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
     Convertible (.right (.prod satl satr)) satr
   | lameta {ctx : List (Object ι)} {lam : LambdaTerm ι κ} {dom tb : Object ι}
     (sat : Typing ζ ctx lam (.hom dom tb)) :
-    Convertible sat (.lam (.app (.incrementBVars [] dom sat)
+    Convertible sat (.lam (.app (.incrementBVars [] dom sat 0 (Eq.refl 0))
       (.bvar (deBrujinIndex := 0) (Option.mem_some_self dom))))
   | beta {ctx : List (Object ι)} {body a : LambdaTerm ι κ} {td ta : Object ι}
     (satb : Typing ζ (ta :: ctx) body td) (sata : Typing ζ ctx a ta) :
-    Convertible (.app (.lam satb) sata) (satb.instantiate [] sata)
+    Convertible (.app (.lam satb) sata) (satb.instantiate [] sata 0 (Eq.refl 0))
 
 end Mathlib.Tactic.CCC
