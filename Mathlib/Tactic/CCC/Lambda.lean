@@ -214,6 +214,30 @@ theorem subsingleton_typing {ι : Type u} {κ : Type v} (ζ : κ → Object ι)
         rw [ih]
     | bvar => cases b; rfl
 
+def LambdaTerm.instantiate {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (n : Nat)
+    (s : LambdaTerm ι κ) : LambdaTerm ι κ :=
+  match t with
+  | .of k => .of k
+  | .unit => .unit
+  | .prod l r => .prod (l.instantiate n s) (r.instantiate n s)
+  | .lam d b => .lam d (b.instantiate (n + 1) s)
+  | .app f a => .app (f.instantiate n s) (a.instantiate n s)
+  | .left u => .left (u.instantiate n s)
+  | .right u => .right (u.instantiate n s)
+  | .bvar m => if n = m then s else if n < m then .bvar (m - 1) else .bvar m
+
+def LambdaTerm.incrementBVars {ι : Type u} {κ : Type v}
+    (n : Nat) (t : LambdaTerm ι κ) : LambdaTerm ι κ :=
+  match t with
+  | .of k => .of k
+  | .unit => .unit
+  | .prod l r => .prod (l.incrementBVars n) (r.incrementBVars n)
+  | .lam d b => .lam d (b.incrementBVars (n + 1))
+  | .app f a => .app (f.incrementBVars n) (a.incrementBVars n)
+  | .left u => .left (u.incrementBVars n)
+  | .right u => .right (u.incrementBVars n)
+  | .bvar m => if n ≤ m then .bvar (m + 1) else .bvar m
+
 inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
     {ctx : List (Object ι)} → {t₁ t₂ : LambdaTerm ι κ} → {typ : Object ι} →
     (sat₁ : Typing ζ ctx t₁ typ) → (sat₂ : Typing ζ ctx t₂ typ) → Prop where
