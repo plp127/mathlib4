@@ -214,18 +214,6 @@ theorem subsingleton_typing {ι : Type u} {κ : Type v} (ζ : κ → Object ι)
         rw [ih]
     | bvar => cases b; rfl
 
-def LambdaTerm.instantiate {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (n : Nat)
-    (s : LambdaTerm ι κ) : LambdaTerm ι κ :=
-  match t with
-  | .of k => .of k
-  | .unit => .unit
-  | .prod l r => .prod (l.instantiate n s) (r.instantiate n s)
-  | .lam d b => .lam d (b.instantiate (n + 1) s)
-  | .app f a => .app (f.instantiate n s) (a.instantiate n s)
-  | .left u => .left (u.instantiate n s)
-  | .right u => .right (u.instantiate n s)
-  | .bvar m => if n = m then s else if n < m then .bvar (m - 1) else .bvar m
-
 def LambdaTerm.incrementBVars {ι : Type u} {κ : Type v}
     (n : Nat) (t : LambdaTerm ι κ) : LambdaTerm ι κ :=
   match t with
@@ -237,6 +225,52 @@ def LambdaTerm.incrementBVars {ι : Type u} {κ : Type v}
   | .left u => .left (u.incrementBVars n)
   | .right u => .right (u.incrementBVars n)
   | .bvar m => if n ≤ m then .bvar (m + 1) else .bvar m
+
+def LambdaTerm.instantiate {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (n : Nat)
+    (s : LambdaTerm ι κ) : LambdaTerm ι κ :=
+  match t with
+  | .of k => .of k
+  | .unit => .unit
+  | .prod l r => .prod (l.instantiate n s) (r.instantiate n s)
+  | .lam d b => .lam d (b.instantiate (n + 1) (s.incrementBVars 0))
+  | .app f a => .app (f.instantiate n s) (a.instantiate n s)
+  | .left u => .left (u.instantiate n s)
+  | .right u => .right (u.instantiate n s)
+  | .bvar m => if n = m then s else if n < m then .bvar (m - 1) else .bvar m
+
+def Typing.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
+    {ctx : List (Object ι)} {t : LambdaTerm ι κ} {tt : Object ι} (tu : Object ι)
+    (sat : Typing ζ (app ++ ctx) t tt) :
+    Typing ζ (app ++ tu :: ctx) (t.incrementBVars app.length) tt :=
+  match sat with
+  | .of k _ => .of k _
+  | .unit _ => .unit _
+  | .prod l r => .prod (l.incrementBVars app tu) (r.incrementBVars app tu)
+  | .lam b => .lam (b.incrementBVars (_ :: app) tu)
+  | .app f a => .app (f.incrementBVars app tu) (a.incrementBVars app tu)
+  | .left u => .left (u.incrementBVars app tu)
+  | .right u => .right (u.incrementBVars app tu)
+  | .bvar h => iteInduction (motive := fun i => Typing ζ (app ++ tu :: ctx) i tt)
+    (fun hl => .bvar (by grind)) (fun hn => .bvar (by grind))
+
+def Typing.instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
+    {ctx : List (Object ι)} {s t : LambdaTerm ι κ} {ts tt : Object ι}
+    (satt : Typing ζ (app ++ ts :: ctx) t tt) (sats : Typing ζ (app ++ ctx) s ts) :
+    Typing ζ (app ++ ctx) (t.instantiate app.length s) tt :=
+  match satt with
+  | .of k _ => .of k _
+  | .unit _ => .unit _
+  | .prod l r => .prod (l.instantiate app sats) (r.instantiate app sats)
+  | .lam b => .lam (b.instantiate (_ :: app) (sats.incrementBVars [] _))
+  | .app f a => .app (f.instantiate app sats) (a.instantiate app sats)
+  | .left u => .left (u.instantiate app sats)
+  | .right u => .right (u.instantiate app sats)
+  | .bvar (deBrujinIndex := n) h =>
+    iteInduction (motive := fun i => Typing ζ (app ++ ctx) i tt)
+      (fun hl => (show ts = tt by grind) ▸ sats)
+      (fun hn => iteInduction (motive := fun i => Typing ζ (app ++ ctx) i tt)
+        (fun hl => .bvar (by grind))
+        (fun hl => .bvar (by grind)))
 
 inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
     {ctx : List (Object ι)} → {t₁ t₂ : LambdaTerm ι κ} → {typ : Object ι} →
@@ -282,5 +316,12 @@ inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
   | prod_right {ctx : List (Object ι)} {left right : LambdaTerm ι κ} {tl tr : Object ι}
     (satl : Typing ζ ctx left tl) (satr : Typing ζ ctx right tr) :
     Convertible (.right (.prod satl satr)) satr
+  | lameta {ctx : List (Object ι)} {lam : LambdaTerm ι κ} {dom tb : Object ι}
+    (sat : Typing ζ ctx lam (.hom dom tb)) :
+    Convertible sat (.lam (.app (.incrementBVars [] dom sat)
+      (.bvar (deBrujinIndex := 0) (Option.mem_some_self dom))))
+  | beta {ctx : List (Object ι)} {body a : LambdaTerm ι κ} {td ta : Object ι}
+    (satb : Typing ζ (ta :: ctx) body td) (sata : Typing ζ ctx a ta) :
+    Convertible (.app (.lam satb) sata) (satb.instantiate [] sata)
 
 end Mathlib.Tactic.CCC
