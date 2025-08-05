@@ -28,6 +28,7 @@ inductive Object (ι : Type u) : Type u where
   | prod (left right : Object ι) : Object ι
   | hom (source target : Object ι) : Object ι
 
+@[simp]
 def Object.read {ι : Type u} (ri : ι → Type w) (t : Object ι) : Type w :=
   match t with
   | .of i => ri i
@@ -148,6 +149,7 @@ inductive Typing {ι : Type u} {κ : Type v} (ζ : κ → Object ι) : (ctx : Li
     {type : Object ι} (sat : type ∈ ctx[deBrujinIndex]?) :
     Typing ζ ctx (.bvar deBrujinIndex) type
 
+@[simp]
 def LambdaTerm.read {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (ctx : List (Object ι))
     (ci : ctx.TProd (Object.read ri)) (t : LambdaTerm ι κ) (type : Object ι)
@@ -194,7 +196,7 @@ theorem unique_typing {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     cases typing₂ with
     | bvar sat₂ => exact Option.mem_unique sat₁ sat₂
 
-theorem subsingleton_typing {ι : Type u} {κ : Type v} (ζ : κ → Object ι)
+instance subsingleton_typing {ι : Type u} {κ : Type v} (ζ : κ → Object ι)
     (ctx : List (Object ι)) (t : LambdaTerm ι κ) (type : Object ι) :
     Subsingleton (Typing ζ ctx t type) where
   allEq a b := by
@@ -220,6 +222,7 @@ theorem subsingleton_typing {ι : Type u} {κ : Type v} (ζ : κ → Object ι)
         rw [ih]
     | bvar => cases b; rfl
 
+@[simp]
 def LambdaTerm.incrementBVars {ι : Type u} {κ : Type v}
     (n : Nat) (t : LambdaTerm ι κ) : LambdaTerm ι κ :=
   match t with
@@ -232,6 +235,7 @@ def LambdaTerm.incrementBVars {ι : Type u} {κ : Type v}
   | .right u => .right (u.incrementBVars n)
   | .bvar m => if n ≤ m then .bvar (m + 1) else .bvar m
 
+@[simp]
 def LambdaTerm.instantiate {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (n : Nat)
     (s : LambdaTerm ι κ) : LambdaTerm ι κ :=
   match t with
@@ -244,6 +248,7 @@ def LambdaTerm.instantiate {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (n
   | .right u => .right (u.instantiate n s)
   | .bvar m => if n = m then s else if n < m then .bvar (m - 1) else .bvar m
 
+@[simp]
 def Typing.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
     {ctx : List (Object ι)} {t : LambdaTerm ι κ} {tt : Object ι} (tu : Object ι)
     (sat : Typing ζ (app ++ ctx) t tt) (n : Nat) (hn : app.length = n) :
@@ -259,6 +264,7 @@ def Typing.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (a
   | .bvar h => iteInduction (motive := fun i => Typing ζ (app ++ tu :: ctx) i tt)
     (fun hl => .bvar (by grind)) (fun hn => .bvar (by grind))
 
+@[simp]
 def Typing.instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
     {ctx : List (Object ι)} {s t : LambdaTerm ι κ} {ts tt : Object ι}
     (satt : Typing ζ (app ++ ts :: ctx) t tt) (sats : Typing ζ (app ++ ctx) s ts)
@@ -338,7 +344,20 @@ theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (sat : Typing ζ (app ++ ctx) t tt) (n : Nat) (hn : app.length = n) :
     (t.incrementBVars n).read ri rk (app ++ tu :: ctx) (List.TProd.insert app x ci)
       tt (sat.incrementBVars app tu n hn) = t.read ri rk (app ++ ctx) ci tt sat := by
-  sorry
+  induction t generalizing tt app n with
+  | of _ => cases sat; rfl
+  | unit => cases sat; rfl
+  | prod _ _ ihl ihr => cases sat; exact congrArg₂ Prod.mk (ihl ..) (ihr ..)
+  | lam dom _ ih =>
+    cases sat with
+    | lam sat =>
+      exact funext fun i => ih (dom :: app) (i, ci) sat (n + 1) (congrArg Nat.succ hn)
+  | app _ _ ihf iha => cases sat; exact congr (ihf ..) (iha ..)
+  | left _ ih => cases sat; exact congrArg Prod.fst (ih ..)
+  | right _ ih => cases sat; exact congrArg Prod.snd (ih ..)
+  | bvar deBrujinIndex =>
+    cases sat with
+    | bvar sat => sorry
 
 theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (ctx : List (Object ι))
