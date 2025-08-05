@@ -85,7 +85,7 @@ inductive Morphism {ι : Type u} {κ : Type v} (s t : κ → Object ι) :
   | left (tl tr : Object ι) : Morphism s t (.prod tl tr) tl
   | right (tl tr : Object ι) : Morphism s t (.prod tl tr) tr
   | curry {tl tr ta : Object ι} (u : Morphism s t (.prod tl tr) ta) : Morphism s t tr (.hom tl ta)
-  | uncurry {tl tr ta : Object ι} (u : Morphism s t tr (.hom tl ta)) : Morphism s t (.prod tl tr) ta
+  | eval (td ta : Object ι) : Morphism s t (.prod td (.hom td ta)) ta
 
 def Morphism.read {ι : Type u} {κ : Type v} {s t : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (s k).read ri → (t k).read ri)
@@ -99,7 +99,7 @@ def Morphism.read {ι : Type u} {κ : Type v} {s t : κ → Object ι}
   | .left _ _ => Prod.fst
   | .right _ _ => Prod.snd
   | .curry f => fun x y => f.read ri rk (y, x)
-  | .uncurry f => fun x => f.read ri rk x.2 x.1
+  | .eval _ _ => fun x => x.2 x.1
 
 section CategoryTheory
 open CategoryTheory MonoidalCategory
@@ -125,29 +125,27 @@ def Morphism.interpret {ι : Type u} {κ : Type v} {s t : κ → Object ι}
   | .left _ _ => CartesianMonoidalCategory.fst _ _
   | .right _ _ => CartesianMonoidalCategory.snd _ _
   | .curry f => CartesianClosed.curry (f.interpret ri rk)
-  | .uncurry f => CartesianClosed.uncurry (f.interpret ri rk)
+  | .eval _ _ => (CategoryTheory.exp.ev _).app _
 
 end CategoryTheory
 
-inductive Morphism.Equiv {ι : Type u} {κ : Type v} {s t : κ → Object ι} :
-    {source target : Object ι} → (left right : Morphism s t source target) → Prop where
-  | refl {source target : Object ι} (u : Morphism s t source target) : Morphism.Equiv u u
-  | symm {source target : Object ι} {u v : Morphism s t source target}
-    (h : Morphism.Equiv u v) : Morphism.Equiv v u
-  | trans {source target : Object ι} {u v w : Morphism s t source target}
-    (h₁ : Morphism.Equiv u v) (h₂ : Morphism.Equiv v w) : Morphism.Equiv u w
-  | congr_comp {obj₁ obj₂ obj₃ : Object ι}
-    {f₁ f₂ : Morphism s t obj₁ obj₂} {g₁ g₂ : Morphism s t obj₂ obj₃}
-    (hf : Morphism.Equiv f₁ f₂) (hg : Morphism.Equiv g₁ g₂) :
-    Morphism.Equiv (.comp f₁ g₂) (.comp f₂ g₂)
-  | congr_prod {src left right : Object ι}
-    {f₁ f₂ : Morphism s t src left} {g₁ g₂ : Morphism s t src right}
-    (hf : Morphism.Equiv f₁ f₂) (hg : Morphism.Equiv g₁ g₂) :
-    Morphism.Equiv (.prod f₁ g₂) (.prod f₂ g₂)
-  | congr_curry {tl tr ta : Object ι} {u₁ u₂ : Morphism s t (.prod tl tr) ta}
-    (h : Morphism.Equiv u₁ u₂) : Morphism.Equiv (.curry u₁) (.curry u₂)
-  | congr_uncurry {tl tr ta : Object ι} {u₁ u₂ : Morphism s t tr (.hom tl ta)}
-    (h : Morphism.Equiv u₁ u₂) : Morphism.Equiv (.uncurry u₁) (.uncurry u₂)
+-- inductive Morphism.Equiv {ι : Type u} {κ : Type v} {s t : κ → Object ι} :
+--     {source target : Object ι} → (left right : Morphism s t source target) → Prop where
+--   | refl {source target : Object ι} (u : Morphism s t source target) : Morphism.Equiv u u
+--   | symm {source target : Object ι} {u v : Morphism s t source target}
+--     (h : Morphism.Equiv u v) : Morphism.Equiv v u
+--   | trans {source target : Object ι} {u v w : Morphism s t source target}
+--     (h₁ : Morphism.Equiv u v) (h₂ : Morphism.Equiv v w) : Morphism.Equiv u w
+--   | congr_comp {obj₁ obj₂ obj₃ : Object ι}
+--     {f₁ f₂ : Morphism s t obj₁ obj₂} {g₁ g₂ : Morphism s t obj₂ obj₃}
+--     (hf : Morphism.Equiv f₁ f₂) (hg : Morphism.Equiv g₁ g₂) :
+--     Morphism.Equiv (.comp f₁ g₂) (.comp f₂ g₂)
+--   | congr_prod {src left right : Object ι}
+--     {f₁ f₂ : Morphism s t src left} {g₁ g₂ : Morphism s t src right}
+--     (hf : Morphism.Equiv f₁ f₂) (hg : Morphism.Equiv g₁ g₂) :
+--     Morphism.Equiv (.prod f₁ g₂) (.prod f₂ g₂)
+--   | congr_curry {tl tr ta : Object ι} {u₁ u₂ : Morphism s t (.prod tl tr) ta}
+--     (h : Morphism.Equiv u₁ u₂) : Morphism.Equiv (.curry u₁) (.curry u₂)
 
 inductive LambdaTerm (ι : Type u) (κ : Type v) : Type (max u v) where
   | of (k : κ) : LambdaTerm ι κ
@@ -315,7 +313,7 @@ def Typing.instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app 
   | .app f a => .app (f.instantiate app sats n hn) (a.instantiate app sats n hn)
   | .left u => .left (u.instantiate app sats n hn)
   | .right u => .right (u.instantiate app sats n hn)
-  | .bvar (deBrujinIndex := n) h =>
+  | .bvar h =>
     iteInduction (motive := fun i => Typing ζ (app ++ ctx) i tt)
       (fun hl => (show ts = tt by grind) ▸ sats)
       (fun hn => iteInduction (motive := fun i => Typing ζ (app ++ ctx) i tt)
@@ -474,5 +472,94 @@ theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object �
   | lam_eta sat =>
     exact funext fun x => congrFun (read_incrementBVars ri rk [] ci x sat 0 (Eq.refl 0)).symm x
   | beta satb sata => exact (read_instantiate ri rk [] satb sata 0 (Eq.refl 0)).symm
+
+theorem congr_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
+    {ctx : List (Object ι)} {s₁ s₂ t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
+    {satt₁ : Typing ζ (app ++ ts :: ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ts :: ctx) t₂ tt}
+    {sats₁ : Typing ζ (app ++ ctx) s₁ ts} {sats₂ : Typing ζ (app ++ ctx) s₂ ts}
+    (convt : Convertible satt₁ satt₂) (convs : Convertible sats₁ sats₂)
+    (n : Nat) (hn : app.length = n) :
+    Convertible (satt₁.instantiate app sats₁ n hn) (satt₂.instantiate app sats₂ n hn) := by
+  sorry
+
+abbrev convertibleSetoid {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (tt : Object ι) :
+    Setoid ((t : LambdaTerm ι κ) × Typing ζ ctx t tt) where
+  r a b := Convertible a.2 b.2
+  iseqv := {
+    refl _ := .refl _
+    symm := .symm
+    trans := .trans
+  }
+
+def FLam {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι)) (tt : Object ι) :
+    Type (max u v) :=
+  Quotient (convertibleSetoid ζ ctx tt)
+
+def FLam.mk {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {t : LambdaTerm ι κ} {tt : Object ι} (sat : Typing ζ ctx t tt) : FLam ζ ctx tt :=
+  Quotient.mk (convertibleSetoid ζ ctx tt) ⟨t, sat⟩
+
+def FLam.instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
+    {ctx : List (Object ι)} {ts tt : Object ι} (t : FLam ζ (app ++ ts :: ctx) tt)
+    (s : FLam ζ (app ++ ctx) ts) (n : Nat) (hn : app.length = n) :
+    FLam ζ (app ++ ctx) tt :=
+  Quotient.lift₂ (fun u v => FLam.mk (u.2.instantiate app v.2 n hn))
+    (sorry) t s
+
+def FLam.left {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {l r : Object ι} (t : FLam ζ ctx (.prod l r)) :
+    FLam ζ ctx l :=
+  Quotient.lift (fun u => FLam.mk (.left u.2))
+    (fun _ _ h => Quotient.sound (.congr_left h)) t
+
+def FLam.right {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {l r : Object ι} (t : FLam ζ ctx (.prod l r)) :
+    FLam ζ ctx r :=
+  Quotient.lift (fun u => FLam.mk (.right u.2))
+    (fun _ _ h => Quotient.sound (.congr_right h)) t
+
+def FLam.prod {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {l r : Object ι} (tl : FLam ζ ctx l) (tr : FLam ζ ctx r) :
+    FLam ζ ctx (.prod l r) :=
+  Quotient.lift₂ (fun u v => FLam.mk (.prod u.2 v.2))
+    (fun _ _ _ _ hu hv => Quotient.sound (.congr_prod hu hv)) tl tr
+
+def FLam.app {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {d a : Object ι} (fn : FLam ζ ctx (.hom d a)) (arg : FLam ζ ctx d) :
+    FLam ζ ctx a :=
+  Quotient.lift₂ (fun u v => FLam.mk (.app u.2 v.2))
+    (fun _ _ _ _ hu hv => Quotient.sound (.congr_app hu hv)) fn arg
+
+mutual
+
+unsafe def FLam.readF {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {tt : Object ι} (t : FLam ζ ctx tt) :
+    Object.read (fun i ↦ FLam ζ ctx (.of i)) tt :=
+  match tt with
+  | .of i => t
+  | .unit => PUnit.unit
+  | .prod l r => (FLam.readF t.left, FLam.readF t.right)
+  | .hom d a => FLam.applyF t
+
+unsafe def FLam.applyF {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {d a : Object ι} (t : FLam ζ ctx (.hom d a))
+    (k : Object.read (fun i ↦ FLam ζ ctx (Object.of i)) d) :
+    Object.read (fun i ↦ FLam ζ ctx (Object.of i)) a :=
+  match d with
+  | .of i => FLam.readF (t.app k)
+  | .unit => FLam.readF (t.app (FLam.mk (.unit ctx)))
+  | .prod l r => FLam.readF (t.app sorry)
+  | .hom r d => sorry
+
+end
+
+theorem flam_ne_of_not_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (ctx : List (Object ι))
+    (ci : ctx.TProd (Object.read ri)) (t₁ t₂ : LambdaTerm ι κ) (type : Object ι)
+    (sat₁ : Typing ζ ctx t₁ type) (sat₂ : Typing ζ ctx t₂ type) (conv : ¬Convertible sat₁ sat₂) :
+    t₁.read (fun i => FLam ζ ctx (.of i)) (fun k => sorry)
+      ctx sorry type sat₁ = sorry := by
+  sorry
 
 end Mathlib.Tactic.CCC
