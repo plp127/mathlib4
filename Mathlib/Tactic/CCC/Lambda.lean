@@ -11,15 +11,51 @@ universe u v w r
 
 def List.TProd.get {ι : Type u} {α : ι → Type v} {l : List ι}
     (t : l.TProd α) {n : Nat} {i : ι} (hi : i ∈ l[n]?) : α i :=
-  match l, t, n, hi with
-  | _ :: _, (u, _), 0, rfl => u
-  | _ :: _, (_, us), _ + 1, hi => List.TProd.get us hi
+  match l, n, hi with
+  | _ :: _, 0, rfl => t.1
+  | _ :: _, _ + 1, hi => List.TProd.get t.2 hi
 
 def List.TProd.insert {ι : Type u} {α : ι → Type v} (app : List ι) {ctx : List ι} {tu : ι}
     (x : α tu) (t : (app ++ ctx).TProd α) : (app ++ tu :: ctx).TProd α :=
   match app with
   | [] => (x, t)
   | _ :: xs => (t.1, List.TProd.insert xs x t.2)
+
+theorem List.TProd.get_insert_self {ι : Type u} {α : ι → Type v} (app : List ι) {ctx : List ι}
+    {tu : ι} (x : α tu) (t : (app ++ ctx).TProd α) (n : Nat) (hn : app.length = n) :
+    (t.insert app x).get (by grind : tu ∈ (app ++ tu :: ctx)[n]?) = x := by
+  subst hn
+  induction app with
+  | nil => rfl
+  | cons i xs ih => exact ih t.2
+
+theorem List.TProd.get_insert_of_lt {ι : Type u} {α : ι → Type v} (app : List ι) {ctx : List ι}
+    {tu : ι} (x : α tu) (t : (app ++ ctx).TProd α) (n : Nat) (hn : n < app.length) {i : ι}
+    (hi : i ∈ (app ++ tu :: ctx)[n]?) : (t.insert app x).get hi =
+      t.get (by grind : i ∈ (app ++ ctx)[n]?) := by
+  induction app generalizing n with
+  | nil => cases hn
+  | cons u xs ih =>
+    cases n with
+    | zero => cases hi; rfl
+    | succ n => exact ih t.2 n (Nat.lt_of_add_lt_add_right hn) hi
+
+theorem List.TProd.get_insert_of_gt {ι : Type u} {α : ι → Type v} (app : List ι) {ctx : List ι}
+    {tu : ι} (x : α tu) (t : (app ++ ctx).TProd α) (n : Nat) (hn : app.length < n) {i : ι}
+    (hi : i ∈ (app ++ tu :: ctx)[n]?) : (t.insert app x).get hi =
+      t.get (by grind : i ∈ (app ++ ctx)[n - 1]?) := by
+  induction app generalizing n with
+  | nil =>
+    cases n with
+    | zero => cases hn
+    | succ n => rfl
+  | cons u xs ih =>
+    cases n with
+    | zero => cases hi; rfl
+    | succ n =>
+      cases n with
+      | zero => simp at hn
+      | succ n => exact ih t.2 (n + 1) (Nat.lt_of_add_lt_add_right hn) hi
 
 namespace Mathlib.Tactic.CCC
 
@@ -247,7 +283,7 @@ def LambdaTerm.instantiate {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (n
   | .app f a => .app (f.instantiate n s) (a.instantiate n s)
   | .left u => .left (u.instantiate n s)
   | .right u => .right (u.instantiate n s)
-  | .bvar m => if n = m then s else if n < m then .bvar (m - 1) else .bvar m
+  | .bvar m => if m = n then s else if n < m then .bvar (m - 1) else .bvar m
 
 @[simp]
 def Typing.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
@@ -359,34 +395,16 @@ theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
   | bvar deBrujinIndex =>
     cases sat with
     | bvar sat =>
-      induction app generalizing n deBrujinIndex with
-      | nil =>
-        dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read]
-        rw [Subsingleton.elim (Nat.decLe n deBrujinIndex)
-          (isTrue (hn.symm.trans_le (Nat.zero_le _)))]
-        rfl
-      | cons i xs ih =>
-        cases deBrujinIndex with
-        | zero =>
-          dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read]
-          rw [Subsingleton.elim (Nat.decLe n 0)
-            (isFalse (fun h => Nat.not_succ_le_zero xs.length (hn.trans_le h)))]
-          cases sat
-          rfl
-        | succ deBrujinIndex =>
-          subst hn
-          specialize ih deBrujinIndex ci.2 xs.length rfl sat
-          by_cases hd : xs.length ≤ deBrujinIndex
-          · dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read] at ih ⊢
-            rw [Subsingleton.elim (Nat.decLe (i :: xs).length (deBrujinIndex + 1))
-              (isTrue (Nat.add_le_add_right hd 1))]
-            rw [Subsingleton.elim (Nat.decLe xs.length deBrujinIndex) (isTrue hd)] at ih
-            exact ih
-          · dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read] at ih ⊢
-            rw [Subsingleton.elim (Nat.decLe (i :: xs).length (deBrujinIndex + 1))
-              (isFalse (mt Nat.le_of_add_le_add_right hd))]
-            rw [Subsingleton.elim (Nat.decLe xs.length deBrujinIndex) (isFalse hd)] at ih
-            exact ih
+      dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read]
+      by_cases hd : n ≤ deBrujinIndex
+      · rewrite! (castMode := .all) [if_pos hd]
+        rw [Subsingleton.elim (Eq.rec ..) (.bvar (by grind))]
+        apply List.TProd.get_insert_of_gt
+        exact hn.trans_lt (Nat.lt_add_one_of_le hd)
+      · rewrite! (castMode := .all) [if_neg hd]
+        rw [Subsingleton.elim (Eq.rec ..) (.bvar (by grind))]
+        apply List.TProd.get_insert_of_lt
+        exact (Nat.lt_of_not_ge hd).trans_eq hn.symm
 
 theorem read_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (app : List (Object ι))
@@ -396,7 +414,44 @@ theorem read_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (t.instantiate n s).read ri rk (app ++ ctx) ci tt (satt.instantiate app sats n hn) =
       t.read ri rk (app ++ ts :: ctx)
         (ci.insert app (s.read ri rk (app ++ ctx) ci ts sats)) tt satt := by
-  sorry
+  induction t generalizing s tt app n with
+  | of _ => cases satt; rfl
+  | unit => cases satt; rfl
+  | prod _ _ ihl ihr => cases satt; exact congrArg₂ Prod.mk (ihl ..) (ihr ..)
+  | lam dom body ih =>
+    cases satt with
+    | @lam _ _ _ tt sat =>
+      exact funext fun i =>
+        (ih (dom :: app) sat (sats.incrementBVars [] dom 0 (Eq.refl 0))
+          (n + 1) (congrArg Nat.succ hn)).trans
+        (congrArg
+          (fun c => LambdaTerm.read ri rk (dom :: (app ++ ts :: ctx))
+            (i, ci.insert app c) body tt sat)
+          (read_incrementBVars ri rk [] ci i sats 0 (Eq.refl 0)))
+  | app _ _ ihf iha => cases satt; exact congr (ihf ..) (iha ..)
+  | left _ ih => cases satt; exact congrArg Prod.fst (ih ..)
+  | right _ ih => cases satt; exact congrArg Prod.snd (ih ..)
+  | bvar deBrujinIndex =>
+    cases satt with
+    | bvar sat =>
+      dsimp only [LambdaTerm.instantiate, Typing.instantiate, LambdaTerm.read]
+      symm
+      by_cases hd : deBrujinIndex = n
+      · rewrite! (castMode := .all) [if_pos hd]
+        obtain rfl : tt = ts := by grind
+        rw [Subsingleton.elim (Eq.rec ..) sats]
+        apply List.TProd.get_insert_self
+        exact hn.trans hd.symm
+      · rewrite! (castMode := .all) [if_neg hd]
+        by_cases hl : n < deBrujinIndex
+        · rewrite! (castMode := .all) [if_pos hl]
+          rw [Subsingleton.elim (Eq.rec ..) (.bvar (by grind))]
+          apply List.TProd.get_insert_of_gt
+          exact hn.trans_lt hl
+        · rewrite! (castMode := .all) [if_neg hl]
+          rw [Subsingleton.elim (Eq.rec ..) (.bvar (by grind))]
+          apply List.TProd.get_insert_of_lt
+          exact (Nat.lt_of_le_of_ne (Nat.le_of_not_gt hl) hd).trans_eq hn.symm
 
 theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (ctx : List (Object ι))
