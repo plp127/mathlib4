@@ -5,6 +5,7 @@ Authors: Aaron Liu
 -/
 import Mathlib.CategoryTheory.Closed.Cartesian
 import Mathlib.Data.Prod.TProd
+import Mathlib.Tactic.DepRewrite
 
 universe u v w r
 
@@ -357,7 +358,35 @@ theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
   | right _ ih => cases sat; exact congrArg Prod.snd (ih ..)
   | bvar deBrujinIndex =>
     cases sat with
-    | bvar sat => sorry
+    | bvar sat =>
+      induction app generalizing n deBrujinIndex with
+      | nil =>
+        dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read]
+        rw [Subsingleton.elim (Nat.decLe n deBrujinIndex)
+          (isTrue (hn.symm.trans_le (Nat.zero_le _)))]
+        rfl
+      | cons i xs ih =>
+        cases deBrujinIndex with
+        | zero =>
+          dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read]
+          rw [Subsingleton.elim (Nat.decLe n 0)
+            (isFalse (fun h => Nat.not_succ_le_zero xs.length (hn.trans_le h)))]
+          cases sat
+          rfl
+        | succ deBrujinIndex =>
+          subst hn
+          specialize ih deBrujinIndex ci.2 xs.length rfl sat
+          by_cases hd : xs.length ≤ deBrujinIndex
+          · dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read] at ih ⊢
+            rw [Subsingleton.elim (Nat.decLe (i :: xs).length (deBrujinIndex + 1))
+              (isTrue (Nat.add_le_add_right hd 1))]
+            rw [Subsingleton.elim (Nat.decLe xs.length deBrujinIndex) (isTrue hd)] at ih
+            exact ih
+          · dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read] at ih ⊢
+            rw [Subsingleton.elim (Nat.decLe (i :: xs).length (deBrujinIndex + 1))
+              (isFalse (mt Nat.le_of_add_le_add_right hd))]
+            rw [Subsingleton.elim (Nat.decLe xs.length deBrujinIndex) (isFalse hd)] at ih
+            exact ih
 
 theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (ctx : List (Object ι))
