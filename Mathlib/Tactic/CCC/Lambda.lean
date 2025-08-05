@@ -343,7 +343,7 @@ theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx : List (Object ι)} (ci : (app ++ ctx).TProd (Object.read ri))
     {t : LambdaTerm ι κ} {tt : Object ι} {tu : Object ι} (x : Object.read ri tu)
     (sat : Typing ζ (app ++ ctx) t tt) (n : Nat) (hn : app.length = n) :
-    (t.incrementBVars n).read ri rk (app ++ tu :: ctx) (List.TProd.insert app x ci)
+    (t.incrementBVars n).read ri rk (app ++ tu :: ctx) (ci.insert app x)
       tt (sat.incrementBVars app tu n hn) = t.read ri rk (app ++ ctx) ci tt sat := by
   induction t generalizing tt app n with
   | of _ => cases sat; rfl
@@ -388,6 +388,16 @@ theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
             rw [Subsingleton.elim (Nat.decLe xs.length deBrujinIndex) (isFalse hd)] at ih
             exact ih
 
+theorem read_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (app : List (Object ι))
+    {ctx : List (Object ι)} {ci : (app ++ ctx).TProd (Object.read ri)}
+    {s t : LambdaTerm ι κ} {ts tt : Object ι} (satt : Typing ζ (app ++ ts :: ctx) t tt)
+    (sats : Typing ζ (app ++ ctx) s ts) (n : Nat) (hn : app.length = n) :
+    (t.instantiate n s).read ri rk (app ++ ctx) ci tt (satt.instantiate app sats n hn) =
+      t.read ri rk (app ++ ts :: ctx)
+        (ci.insert app (s.read ri rk (app ++ ctx) ci ts sats)) tt satt := by
+  sorry
+
 theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (ctx : List (Object ι))
     (ci : ctx.TProd (Object.read ri)) (t₁ t₂ : LambdaTerm ι κ) (type : Object ι)
@@ -408,6 +418,6 @@ theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object �
   | prod_right _ _ => rfl
   | lam_eta sat =>
     exact funext fun x => congrFun (read_incrementBVars ri rk [] ci x sat 0 (Eq.refl 0)).symm x
-  | beta satb sata => sorry
+  | beta satb sata => exact (read_instantiate ri rk [] satb sata 0 (Eq.refl 0)).symm
 
 end Mathlib.Tactic.CCC
