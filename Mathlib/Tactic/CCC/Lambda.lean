@@ -14,6 +14,12 @@ def List.TProd.get {ι : Type u} {α : ι → Type v} {l : List ι}
   | _ :: _, (u, _), 0, rfl => u
   | _ :: _, (_, us), _ + 1, hi => List.TProd.get us hi
 
+def List.TProd.insert {ι : Type u} {α : ι → Type v} (app : List ι) {ctx : List ι} {tu : ι}
+    (x : α tu) (t : (app ++ ctx).TProd α) : (app ++ tu :: ctx).TProd α :=
+  match app with
+  | [] => (x, t)
+  | _ :: xs => (t.1, List.TProd.insert xs x t.2)
+
 namespace Mathlib.Tactic.CCC
 
 inductive Object (ι : Type u) : Type u where
@@ -288,12 +294,12 @@ inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
     {left₁ left₂ right₁ right₂ : LambdaTerm ι κ} {tl tr : Object ι}
     {satl₁ : Typing ζ ctx left₁ tl} {satl₂ : Typing ζ ctx left₂ tl}
     {satr₁ : Typing ζ ctx right₁ tr} {satr₂ : Typing ζ ctx right₂ tr}
-    (hf : Convertible satl₁ satl₂) (ha : Convertible satr₁ satr₂) :
+    (hl : Convertible satl₁ satl₂) (hr : Convertible satr₁ satr₂) :
     Convertible (.prod satl₁ satr₁) (.prod satl₂ satr₂)
   | congr_lam {ctx : List (Object ι)}
     {body₁ body₂ : LambdaTerm ι κ} {dom tb : Object ι}
     {satb₁ : Typing ζ (dom :: ctx) body₁ tb} {satb₂ : Typing ζ (dom :: ctx) body₂ tb}
-    (hf : Convertible satb₁ satb₁) : Convertible (.lam satb₁) (.lam satb₂)
+    (hf : Convertible satb₁ satb₂) : Convertible (.lam satb₁) (.lam satb₂)
   | congr_app {ctx : List (Object ι)} {fn₁ fn₂ arg₁ arg₂ : LambdaTerm ι κ} {td ta : Object ι}
     {satf₁ : Typing ζ ctx fn₁ (.hom td ta)} {satf₂ : Typing ζ ctx fn₂ (.hom td ta)}
     {sata₁ : Typing ζ ctx arg₁ td} {sata₂ : Typing ζ ctx arg₂ td}
@@ -302,11 +308,11 @@ inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
   | congr_left {ctx : List (Object ι)}
     {tup₁ tup₂ : LambdaTerm ι κ} {tl tr : Object ι}
     {sat₁ : Typing ζ ctx tup₁ (.prod tl tr)} {sat₂ : Typing ζ ctx tup₂ (.prod tl tr)}
-    (hf : Convertible sat₁ sat₁) : Convertible (.left sat₁) (.left sat₂)
+    (hu : Convertible sat₁ sat₂) : Convertible (.left sat₁) (.left sat₂)
   | congr_right {ctx : List (Object ι)}
     {tup₁ tup₂ : LambdaTerm ι κ} {tl tr : Object ι}
     {sat₁ : Typing ζ ctx tup₁ (.prod tl tr)} {sat₂ : Typing ζ ctx tup₂ (.prod tl tr)}
-    (hf : Convertible sat₁ sat₁) : Convertible (.right sat₁) (.right sat₂)
+    (hu : Convertible sat₁ sat₂) : Convertible (.right sat₁) (.right sat₂)
   | unit_eta {ctx : List (Object ι)} {t : LambdaTerm ι κ}
     (sat : Typing ζ ctx t .unit) : Convertible sat (.unit ctx)
   | prod_eta {ctx : List (Object ι)} {tup : LambdaTerm ι κ} {tl tr : Object ι}
@@ -317,12 +323,43 @@ inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
   | prod_right {ctx : List (Object ι)} {left right : LambdaTerm ι κ} {tl tr : Object ι}
     (satl : Typing ζ ctx left tl) (satr : Typing ζ ctx right tr) :
     Convertible (.right (.prod satl satr)) satr
-  | lameta {ctx : List (Object ι)} {lam : LambdaTerm ι κ} {dom tb : Object ι}
+  | lam_eta {ctx : List (Object ι)} {lam : LambdaTerm ι κ} {dom tb : Object ι}
     (sat : Typing ζ ctx lam (.hom dom tb)) :
     Convertible sat (.lam (.app (.incrementBVars [] dom sat 0 (Eq.refl 0))
       (.bvar (deBrujinIndex := 0) (Option.mem_some_self dom))))
   | beta {ctx : List (Object ι)} {body a : LambdaTerm ι κ} {td ta : Object ι}
     (satb : Typing ζ (ta :: ctx) body td) (sata : Typing ζ ctx a ta) :
     Convertible (.app (.lam satb) sata) (satb.instantiate [] sata 0 (Eq.refl 0))
+
+theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (app : List (Object ι))
+    {ctx : List (Object ι)} (ci : (app ++ ctx).TProd (Object.read ri))
+    {t : LambdaTerm ι κ} {tt : Object ι} {tu : Object ι} (x : Object.read ri tu)
+    (sat : Typing ζ (app ++ ctx) t tt) (n : Nat) (hn : app.length = n) :
+    (t.incrementBVars n).read ri rk (app ++ tu :: ctx) (List.TProd.insert app x ci)
+      tt (sat.incrementBVars app tu n hn) = t.read ri rk (app ++ ctx) ci tt sat := by
+  sorry
+
+theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (ctx : List (Object ι))
+    (ci : ctx.TProd (Object.read ri)) (t₁ t₂ : LambdaTerm ι κ) (type : Object ι)
+    (sat₁ : Typing ζ ctx t₁ type) (sat₂ : Typing ζ ctx t₂ type) (conv : Convertible sat₁ sat₂) :
+    t₁.read ri rk ctx ci type sat₁ = t₂.read ri rk ctx ci type sat₂ := by
+  induction conv with
+  | refl sat => rfl
+  | symm _ ih => exact (ih ci).symm
+  | trans _ _ ih₁ ih₂ => exact (ih₁ ci).trans (ih₂ ci)
+  | congr_prod _ _ ihl ihr => exact congrArg₂ Prod.mk (ihl ci) (ihr ci)
+  | congr_lam _ ih => exact funext fun x => ih (x, ci)
+  | congr_app _ _ ihf iha => exact congr (ihf ci) (iha ci)
+  | congr_left _ ih => exact congrArg Prod.fst (ih ci)
+  | congr_right _ ih => exact congrArg Prod.snd (ih ci)
+  | unit_eta _ => rfl
+  | prod_eta _ => rfl
+  | prod_left _ _ => rfl
+  | prod_right _ _ => rfl
+  | lam_eta sat =>
+    exact funext fun x => congrFun (read_incrementBVars ri rk [] ci x sat 0 (Eq.refl 0)).symm x
+  | beta satb sata => sorry
 
 end Mathlib.Tactic.CCC
