@@ -372,6 +372,13 @@ inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
     (satb : Typing ζ (ta :: ctx) body td) (sata : Typing ζ ctx a ta) :
     Convertible (.app (.lam satb) sata) (satb.instantiate [] sata 0 (Eq.refl 0))
 
+theorem Convertible.of_eq {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {t₁ t₂ : LambdaTerm ι κ} {typ : Object ι} (h : t₁ = t₂)
+    (sat₁ : Typing ζ ctx t₁ typ) (sat₂ : Typing ζ ctx t₂ typ) : Convertible sat₁ sat₂ := by
+  cases h
+  cases Subsingleton.elim sat₁ sat₂
+  exact .refl _
+
 theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (app : List (Object ι))
     {ctx : List (Object ι)} (ci : (app ++ ctx).TProd (Object.read ri))
@@ -497,11 +504,11 @@ theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object �
   | prod_left _ _ => exact .prod_left _ _
   | prod_right _ _ => exact .prod_right _ _
   | lam_eta sat =>
-    refine .trans (.lam_eta _) (.congr_lam (.congr_app ?_ (.refl _)))
+    refine .trans (.lam_eta _) (.congr_lam (.congr_app (.of_eq ?_ _ _) (.refl _)))
     dsimp
     sorry
   | beta satb sata =>
-    refine .trans (.beta _ _) ?_
+    refine .trans (.beta _ _) (.of_eq ?_ _ _)
     dsimp
     sorry
 
