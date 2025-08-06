@@ -473,14 +473,37 @@ theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object �
     exact funext fun x => congrFun (read_incrementBVars ri rk [] ci x sat 0 (Eq.refl 0)).symm x
   | beta satb sata => exact (read_instantiate ri rk [] satb sata 0 (Eq.refl 0)).symm
 
-theorem congr_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
-    {ctx : List (Object ι)} {s₁ s₂ t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
+theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
+    {ctx : List (Object ι)} {s t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
     {satt₁ : Typing ζ (app ++ ts :: ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ts :: ctx) t₂ tt}
-    {sats₁ : Typing ζ (app ++ ctx) s₁ ts} {sats₂ : Typing ζ (app ++ ctx) s₂ ts}
-    (convt : Convertible satt₁ satt₂) (convs : Convertible sats₁ sats₂)
+    (sats : Typing ζ (app ++ ctx) s ts) (convt : Convertible satt₁ satt₂)
     (n : Nat) (hn : app.length = n) :
-    Convertible (satt₁.instantiate app sats₁ n hn) (satt₂.instantiate app sats₂ n hn) := by
-  sorry
+    Convertible (satt₁.instantiate app sats n hn) (satt₂.instantiate app sats n hn) := by
+  obtain ⟨c, hc⟩ : ∃ l, app ++ ts :: ctx = l := ⟨_, rfl⟩
+  revert t₁ t₂
+  rewrite! (castMode := .all) [hc]
+  intro t₁ t₂ satt₁ satt₂ convt
+  induction convt generalizing s n app with subst hc
+  | refl _ => exact .refl _
+  | symm _ ih => exact .symm (ih app sats n hn rfl)
+  | trans _ _ ih₁ ih₂ => exact .trans (ih₁ app sats n hn rfl) (ih₂ app sats n hn rfl)
+  | congr_prod _ _ ihl ihr => exact .congr_prod (ihl app sats n hn rfl) (ihr app sats n hn rfl)
+  | congr_lam hf ih => exact .congr_lam (ih (_ :: app) _ (n + 1) (congrArg Nat.succ hn) rfl)
+  | congr_app _ _ ihf iha => exact .congr_app (ihf app sats n hn rfl) (iha app sats n hn rfl)
+  | congr_left hu ih => exact .congr_left (ih app sats n hn rfl)
+  | congr_right hu ih => exact .congr_right (ih app sats n hn rfl)
+  | unit_eta _ => exact .unit_eta _
+  | prod_eta _ => exact .prod_eta _
+  | prod_left _ _ => exact .prod_left _ _
+  | prod_right _ _ => exact .prod_right _ _
+  | lam_eta sat =>
+    refine .trans (.lam_eta _) (.congr_lam (.congr_app ?_ (.refl _)))
+    dsimp
+    sorry
+  | beta satb sata =>
+    refine .trans (.beta _ _) ?_
+    dsimp
+    sorry
 
 abbrev convertibleSetoid {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (tt : Object ι) :
