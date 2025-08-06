@@ -155,7 +155,7 @@ inductive LambdaTerm (ι : Type u) (κ : Type v) : Type (max u v) where
   | app (fn arg : LambdaTerm ι κ) : LambdaTerm ι κ
   | left (tup : LambdaTerm ι κ) : LambdaTerm ι κ
   | right (tup : LambdaTerm ι κ) : LambdaTerm ι κ
-  | bvar (deBrujinIndex : Nat) : LambdaTerm ι κ
+  | bvar (deBruijnIndex : Nat) : LambdaTerm ι κ
 
 inductive Typing {ι : Type u} {κ : Type v} (ζ : κ → Object ι) : (ctx : List (Object ι)) →
     (term : LambdaTerm ι κ) → (type : Object ι) → Type (max u v) where
@@ -180,9 +180,9 @@ inductive Typing {ι : Type u} {κ : Type v} (ζ : κ → Object ι) : (ctx : Li
     {tup : LambdaTerm ι κ} {left right : Object ι}
     (sat : Typing ζ ctx tup (.prod left right)) :
     Typing ζ ctx (.right tup) right
-  | bvar {ctx : List (Object ι)} {deBrujinIndex : Nat}
-    {type : Object ι} (sat : type ∈ ctx[deBrujinIndex]?) :
-    Typing ζ ctx (.bvar deBrujinIndex) type
+  | bvar {ctx : List (Object ι)} {deBruijnIndex : Nat}
+    {type : Object ι} (sat : type ∈ ctx[deBruijnIndex]?) :
+    Typing ζ ctx (.bvar deBruijnIndex) type
 
 @[simp]
 def LambdaTerm.read {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
@@ -367,7 +367,7 @@ inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
   | lam_eta {ctx : List (Object ι)} {lam : LambdaTerm ι κ} {dom tb : Object ι}
     (sat : Typing ζ ctx lam (.hom dom tb)) :
     Convertible sat (.lam (.app (.incrementBVars [] dom sat 0 (Eq.refl 0))
-      (.bvar (deBrujinIndex := 0) (Option.mem_some_self dom))))
+      (.bvar (deBruijnIndex := 0) (Option.mem_some_self dom))))
   | beta {ctx : List (Object ι)} {body a : LambdaTerm ι κ} {td ta : Object ι}
     (satb : Typing ζ (ta :: ctx) body td) (sata : Typing ζ ctx a ta) :
     Convertible (.app (.lam satb) sata) (satb.instantiate [] sata 0 (Eq.refl 0))
@@ -397,11 +397,11 @@ theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
   | app _ _ ihf iha => cases sat; exact congr (ihf ..) (iha ..)
   | left _ ih => cases sat; exact congrArg Prod.fst (ih ..)
   | right _ ih => cases sat; exact congrArg Prod.snd (ih ..)
-  | bvar deBrujinIndex =>
+  | bvar deBruijnIndex =>
     cases sat with
     | bvar sat =>
       dsimp only [LambdaTerm.incrementBVars, Typing.incrementBVars, LambdaTerm.read]
-      by_cases hd : n ≤ deBrujinIndex
+      by_cases hd : n ≤ deBruijnIndex
       · rewrite! (castMode := .all) [if_pos hd]
         rw [Subsingleton.elim (Eq.rec ..) (.bvar (by grind))]
         apply List.TProd.get_insert_of_gt
@@ -436,19 +436,19 @@ theorem read_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
   | app _ _ ihf iha => cases satt; exact congr (ihf ..) (iha ..)
   | left _ ih => cases satt; exact congrArg Prod.fst (ih ..)
   | right _ ih => cases satt; exact congrArg Prod.snd (ih ..)
-  | bvar deBrujinIndex =>
+  | bvar deBruijnIndex =>
     cases satt with
     | bvar sat =>
       dsimp only [LambdaTerm.instantiate, Typing.instantiate, LambdaTerm.read]
       symm
-      by_cases hd : deBrujinIndex = n
+      by_cases hd : deBruijnIndex = n
       · rewrite! (castMode := .all) [if_pos hd]
         obtain rfl : tt = ts := by grind
         rw [Subsingleton.elim (Eq.rec ..) sats]
         apply List.TProd.get_insert_self
         exact hn.trans hd.symm
       · rewrite! (castMode := .all) [if_neg hd]
-        by_cases hl : n < deBrujinIndex
+        by_cases hl : n < deBruijnIndex
         · rewrite! (castMode := .all) [if_pos hl]
           rw [Subsingleton.elim (Eq.rec ..) (.bvar (by grind))]
           apply List.TProd.get_insert_of_gt
