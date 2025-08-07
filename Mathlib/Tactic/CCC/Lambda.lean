@@ -480,6 +480,80 @@ theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object �
     exact funext fun x => congrFun (read_incrementBVars ri rk [] ci x sat 0 (Eq.refl 0)).symm x
   | beta satb sata => exact (read_instantiate ri rk [] satb sata 0 (Eq.refl 0)).symm
 
+theorem instantiate_incrementBVars {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
+    (s : LambdaTerm ι κ) (n : ℕ) : (t.incrementBVars n).instantiate n s = t := by
+  induction t generalizing n s with
+  | of _ => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl s n) (ihr s n)
+  | lam dom _ ih => exact congrArg (LambdaTerm.lam dom) (ih (s.incrementBVars 0) (n + 1))
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app (ihf s n) (iha s n)
+  | left _ ih => exact congrArg LambdaTerm.left (ih s n)
+  | right _ ih => exact congrArg LambdaTerm.right (ih s n)
+  | bvar deBruijnIndex =>
+    rw [LambdaTerm.incrementBVars]
+    by_cases hn : n ≤ deBruijnIndex
+    · rw [if_pos hn, LambdaTerm.instantiate, if_neg (Nat.ne_of_gt (Nat.lt_add_one_of_le hn)),
+        if_pos (Nat.lt_add_one_of_le hn), Nat.add_sub_cancel]
+    · rw [if_neg hn, LambdaTerm.instantiate, if_neg (Nat.ne_of_lt (Nat.lt_of_not_ge hn)),
+        if_neg (mt Nat.le_of_lt hn)]
+
+theorem incrementBVars_incrementBVars_of_ge {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
+    {n m : ℕ} (h : m ≤ n) :
+    (t.incrementBVars n).incrementBVars m =
+      (t.incrementBVars m).incrementBVars (n + 1) := by
+  induction t generalizing n m with
+  | of k => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl h) (ihr h)
+  | lam dom _ ih => exact congrArg (LambdaTerm.lam dom) (ih (Nat.add_le_add_right h 1))
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app (ihf h) (iha h)
+  | left _ ih => exact congrArg LambdaTerm.left (ih h)
+  | right _ ih => exact congrArg LambdaTerm.right (ih h)
+  | bvar deBruijnIndex =>
+    simp only [LambdaTerm.incrementBVars, apply_ite (LambdaTerm.incrementBVars _)]
+    grind
+
+theorem incrementBVars_instantiate_of_le {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
+    (s : LambdaTerm ι κ) {n m : ℕ} (h : n ≤ m) :
+    (t.instantiate n s).incrementBVars m =
+      (t.incrementBVars (m + 1)).instantiate n (s.incrementBVars m) := by
+  induction t generalizing n m s with
+  | of _ => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl s h) (ihr s h)
+  | lam _ _ ih =>
+    rw [LambdaTerm.instantiate, LambdaTerm.incrementBVars, ih _ (Nat.add_le_add_right h 1),
+      ← incrementBVars_incrementBVars_of_ge _ (Nat.zero_le m), ← LambdaTerm.instantiate,
+      ← LambdaTerm.incrementBVars]
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app (ihf s h) (iha s h)
+  | left _ ih => exact congrArg LambdaTerm.left (ih s h)
+  | right _ ih => exact congrArg LambdaTerm.right (ih s h)
+  | bvar deBruijnIndex =>
+    simp only [LambdaTerm.instantiate, LambdaTerm.incrementBVars,
+      apply_ite (LambdaTerm.incrementBVars _), apply_ite LambdaTerm.instantiate, ite_apply]
+    grind
+
+theorem incrementBVars_instantiate_of_ge {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
+    (s : LambdaTerm ι κ) {n m : ℕ} (h : m ≤ n) :
+    (t.instantiate n s).incrementBVars m =
+      (t.incrementBVars m).instantiate (n + 1) (s.incrementBVars m) := by
+  induction t generalizing n m s with
+  | of _ => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl s h) (ihr s h)
+  | lam dom body ih =>
+    rw [LambdaTerm.instantiate, LambdaTerm.incrementBVars, ih _ (Nat.add_le_add_right h 1),
+      ← incrementBVars_incrementBVars_of_ge _ (Nat.zero_le m), ← LambdaTerm.instantiate,
+      ← LambdaTerm.incrementBVars]
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app (ihf s h) (iha s h)
+  | left _ ih => exact congrArg LambdaTerm.left (ih s h)
+  | right _ ih => exact congrArg LambdaTerm.right (ih s h)
+  | bvar deBruijnIndex =>
+    simp only [LambdaTerm.instantiate, LambdaTerm.incrementBVars,
+      apply_ite (LambdaTerm.incrementBVars _), apply_ite LambdaTerm.instantiate, ite_apply]
+    grind
+
 theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
     {ctx : List (Object ι)} {s t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
     {satt₁ : Typing ζ (app ++ ts :: ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ts :: ctx) t₂ tt}
@@ -504,9 +578,8 @@ theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object �
   | prod_left _ _ => exact .prod_left _ _
   | prod_right _ _ => exact .prod_right _ _
   | lam_eta sat =>
-    refine .trans (.lam_eta _) (.congr_lam (.congr_app (.of_eq ?_ _ _) (.refl _)))
-    dsimp
-    sorry
+    exact .trans (.lam_eta _) (.congr_lam
+      (.congr_app (.of_eq (incrementBVars_instantiate_of_ge _ _ (Nat.zero_le n)) _ _) (.refl _)))
   | beta satb sata =>
     refine .trans (.beta _ _) (.of_eq ?_ _ _)
     dsimp
