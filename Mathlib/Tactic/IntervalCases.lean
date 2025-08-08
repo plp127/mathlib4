@@ -346,9 +346,13 @@ syntax (name := intervalCases) "interval_cases" (ppSpace colGt atomic(binderIden
 elab_rules : tactic
   | `(tactic| interval_cases $[$[$h :]? $e]? $[using $lb, $ub]?) => do
     let g ← getMainGoal
-    let cont x h? subst g e lbs ubs mustUseBounds : TacticM Unit := do
+    let cont (x : FVarId) (h? : Option FVarId) (subst : FVarSubst) (g : MVarId) (e : Expr)
+        (lbs ubs : Array Expr) (toClear : List FVarId) (mustUseBounds : Bool) : TacticM Unit := do
       let goals ← IntervalCases.intervalCases g (.fvar x) e lbs ubs mustUseBounds
       let gs ← goals.mapM fun { goal, .. } => do
+        let mut goal := goal
+        for fvarId in toClear do
+          goal ← goal.clear fvarId
         let (fv, g) ← goal.intro1
         let (subst, g) ← substCore g fv (fvarSubst := subst)
         if let some hStx := h.getD none then
@@ -375,9 +379,26 @@ elab_rules : tactic
         let (lo, _) ← parseBound ubTy
         let .true ← isDefEq e lo | failure
       catch _ => throwErrorAt ub "expected a term of the form {e} < _ or {e} ≤ _, got {ubTy}"
-      let (subst, xs, g) ← g.generalizeHyp #[{ expr := e, hName? }] (← getFVarIdsAt g)
+      let lbHyp : Hypothesis := {
+        userName := ← mkFreshUserName `lb'
+        type := lbTy
+        value := lb'
+      }
+      let ubHyp : Hypothesis := {
+        userName := ← mkFreshUserName `ub'
+        type := ubTy
+        value := ub'
+      }
+      let (hyps, g)  ← g.assertHypotheses #[lbHyp, ubHyp]
+      let #[lb, ub] := hyps |
+        throwError m!"internal error: expected two asserted hypotheses, got {hyps.size}"
       g.withContext do
-      cont xs[0]! xs[1]? subst g e #[subst.apply lb'] #[subst.apply ub'] (mustUseBounds := true)
+      let (subst, xs, g) ← g.generalizeHyp #[{ expr := e, hName? }] (← getFVarIdsAt g)
+      let lb := subst.get lb
+      let ub := subst.get ub
+      g.withContext do
+      cont xs[0]! xs[1]? subst g e #[lb] #[ub]
+        (toClear := [lb.fvarId!, ub.fvarId!]) (mustUseBounds := true)
     | some e, none, none =>
       let e ← Tactic.elabTerm e none
       let (subst, xs, g) ← g.generalizeHyp #[{ expr := e, hName? }] (← getFVarIdsAt g)
@@ -395,7 +416,11 @@ elab_rules : tactic
             lbs := lbs.push (.fvar ldecl.fvarId)
           else failure
         catch _ => pure ()
-      cont x xs[1]? subst g e lbs ubs (mustUseBounds := false)
+      cont x xs[1]? subst g e lbs ubs (toClear := []) (mustUseBounds := false)
     | _, _, _ => throwUnsupportedSyntax
 
 end Mathlib.Tactic
+
+example {a : ℕ} (h₁ : a ≠ 0) (h₂ : a ≠ 1) : 2 ≤ a := by
+  by_contra hu
+  interval_cases a using (Nat.zero_le a), hu <;> contradiction
