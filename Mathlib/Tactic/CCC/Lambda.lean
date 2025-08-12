@@ -554,6 +554,26 @@ theorem incrementBVars_instantiate_of_ge {ι : Type u} {κ : Type v} (t : Lambda
       apply_ite (LambdaTerm.incrementBVars _), apply_ite LambdaTerm.instantiate, ite_apply]
     grind
 
+theorem instantiate_instantiate_of_le {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
+    (s₁ s₂ : LambdaTerm ι κ) {n m : ℕ} (h : n ≤ m) :
+    (t.instantiate n s₁).instantiate m s₂ =
+      (t.instantiate (m + 1) (s₂.incrementBVars n)).instantiate n (s₁.instantiate m s₂) := by
+  induction t generalizing n m s₁ s₂ with
+  | of _ => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl s₁ s₂ h) (ihr s₁ s₂ h)
+  | lam dom body ih =>
+    rw [LambdaTerm.instantiate, LambdaTerm.instantiate, ih _ _ (Nat.add_le_add_right h 1),
+      ← incrementBVars_instantiate_of_ge _ _ (Nat.zero_le m), ← LambdaTerm.instantiate,
+      ← incrementBVars_incrementBVars_of_ge _ (Nat.zero_le n), ← LambdaTerm.instantiate]
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app (ihf s₁ s₂ h) (iha s₁ s₂ h)
+  | left _ ih => exact congrArg LambdaTerm.left (ih s₁ s₂ h)
+  | right _ ih => exact congrArg LambdaTerm.right (ih s₁ s₂ h)
+  | bvar deBruijnIndex =>
+    simp only [LambdaTerm.instantiate, apply_ite LambdaTerm.instantiate, ite_apply,
+      instantiate_incrementBVars]
+    grind
+
 theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
     {ctx : List (Object ι)} {s t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
     {satt₁ : Typing ζ (app ++ ts :: ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ts :: ctx) t₂ tt}
@@ -581,9 +601,7 @@ theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object �
     exact .trans (.lam_eta _) (.congr_lam
       (.congr_app (.of_eq (incrementBVars_instantiate_of_ge _ _ (Nat.zero_le n)) _ _) (.refl _)))
   | beta satb sata =>
-    refine .trans (.beta _ _) (.of_eq ?_ _ _)
-    dsimp
-    sorry
+    exact .trans (.beta _ _) (.of_eq (instantiate_instantiate_of_le _ _ _ (Nat.zero_le n)).symm _ _)
 
 abbrev convertibleSetoid {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (tt : Object ι) :
