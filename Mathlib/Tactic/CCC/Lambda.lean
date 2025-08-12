@@ -214,10 +214,10 @@ theorem unique_typing {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
   | unit _ => cases typing₂; rfl
   | prod _ _ ih₁ ih₂ =>
     cases typing₂ with
-    | @prod _ _ _ tl tr satl satr => rw [ih₁ satl, ih₂ satr]
+    | prod satl satr => rw [ih₁ satl, ih₂ satr]
   | lam _ ih =>
     cases typing₂ with
-    | @lam _ _ _ t sat => rw [ih sat]
+    | lam sat => rw [ih sat]
   | app _ _ ih _ =>
     cases typing₂ with
     | app sat => exact (Object.hom.inj (ih sat)).right
@@ -425,13 +425,13 @@ theorem read_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
   | prod _ _ ihl ihr => cases satt; exact congrArg₂ Prod.mk (ihl ..) (ihr ..)
   | lam dom body ih =>
     cases satt with
-    | @lam _ _ _ tt sat =>
+    | lam sat =>
       exact funext fun i =>
         (ih (dom :: app) sat (sats.incrementBVars [] dom 0 (Eq.refl 0))
           (n + 1) (congrArg Nat.succ hn)).trans
         (congrArg
           (fun c => LambdaTerm.read ri rk (dom :: (app ++ ts :: ctx))
-            (i, ci.insert app c) body tt sat)
+            (i, ci.insert app c) body _ sat)
           (read_incrementBVars ri rk [] ci i sats 0 (Eq.refl 0)))
   | app _ _ ihf iha => cases satt; exact congr (ihf ..) (iha ..)
   | left _ ih => cases satt; exact congrArg Prod.fst (ih ..)
@@ -503,7 +503,7 @@ theorem incrementBVars_incrementBVars_of_ge {ι : Type u} {κ : Type v} (t : Lam
     (t.incrementBVars n).incrementBVars m =
       (t.incrementBVars m).incrementBVars (n + 1) := by
   induction t generalizing n m with
-  | of k => rfl
+  | of _ => rfl
   | unit => rfl
   | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl h) (ihr h)
   | lam dom _ ih => exact congrArg (LambdaTerm.lam dom) (ih (Nat.add_le_add_right h 1))
