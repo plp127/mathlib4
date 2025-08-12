@@ -298,12 +298,16 @@ inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
     (satb : Typing ζ (ta :: ctx) body td) (sata : Typing ζ ctx a ta) :
     Convertible (.app (.lam satb) sata) (satb.instantiate [] sata 0 (Eq.refl 0))
 
+attribute [refl] Convertible.refl
+attribute [symm] Convertible.symm
+attribute [trans] Convertible.trans
+
 theorem Convertible.of_eq {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx : List (Object ι)} {t₁ t₂ : LambdaTerm ι κ} {typ : Object ι} (h : t₁ = t₂)
     (sat₁ : Typing ζ ctx t₁ typ) (sat₂ : Typing ζ ctx t₂ typ) : Convertible sat₁ sat₂ := by
   cases h
   cases Subsingleton.elim sat₁ sat₂
-  exact .refl _
+  rfl
 
 theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (app : List (Object ι))
@@ -500,6 +504,36 @@ theorem instantiate_instantiate_of_le {ι : Type u} {κ : Type v} (t : LambdaTer
       instantiate_incrementBVars]
     grind
 
+theorem congr_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
+    {ctx : List (Object ι)} {t₁ t₂ : LambdaTerm ι κ} {tu tt : Object ι}
+    {satt₁ : Typing ζ (app ++ ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ctx) t₂ tt}
+    (convt : Convertible satt₁ satt₂) (n : Nat) (hn : app.length = n) :
+    Convertible (satt₁.incrementBVars app tu n hn) (satt₂.incrementBVars app tu n hn) := by
+  obtain ⟨c, hc⟩ : ∃ l, app ++ ctx = l := ⟨_, rfl⟩
+  revert t₁ t₂
+  rewrite! (castMode := .all) [hc]
+  intro t₁ t₂ satt₁ satt₂ convt
+  induction convt generalizing n app with subst hc
+  | refl _ => rfl
+  | symm _ ih => exact .symm (ih app n hn rfl)
+  | trans _ _ ih₁ ih₂ => exact .trans (ih₁ app n hn rfl) (ih₂ app n hn rfl)
+  | congr_prod _ _ ihl ihr => exact .congr_prod (ihl app n hn rfl) (ihr app n hn rfl)
+  | congr_lam hf ih => exact .congr_lam (ih (_ :: app) (n + 1) (congrArg Nat.succ hn) rfl)
+  | congr_app _ _ ihf iha => exact .congr_app (ihf app n hn rfl) (iha app n hn rfl)
+  | congr_left hu ih => exact .congr_left (ih app n hn rfl)
+  | congr_right hu ih => exact .congr_right (ih app n hn rfl)
+  | unit_eta _ => exact .unit_eta _
+  | prod_eta _ => exact .prod_eta _
+  | prod_left _ _ => exact .prod_left _ _
+  | prod_right _ _ => exact .prod_right _ _
+  | lam_eta sat =>
+    refine .trans (.lam_eta _) (.of_eq ?_ _ _)
+    rw [incrementBVars_incrementBVars_of_ge _ (Nat.zero_le n), LambdaTerm.incrementBVars,
+      LambdaTerm.incrementBVars, LambdaTerm.incrementBVars, if_neg (Nat.not_add_one_le_zero n)]
+  | beta satb sata =>
+    exact .trans (.beta _ _) (.of_eq
+      (incrementBVars_instantiate_of_le _ _ (Nat.zero_le n)).symm _ _)
+
 theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
     {ctx : List (Object ι)} {s t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
     {satt₁ : Typing ζ (app ++ ts :: ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ts :: ctx) t₂ tt}
@@ -511,7 +545,7 @@ theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object �
   rewrite! (castMode := .all) [hc]
   intro t₁ t₂ satt₁ satt₂ convt
   induction convt generalizing s n app with subst hc
-  | refl _ => exact .refl _
+  | refl _ => rfl
   | symm _ ih => exact .symm (ih app sats n hn rfl)
   | trans _ _ ih₁ ih₂ => exact .trans (ih₁ app sats n hn rfl) (ih₂ app sats n hn rfl)
   | congr_prod _ _ ihl ihr => exact .congr_prod (ihl app sats n hn rfl) (ihr app sats n hn rfl)
@@ -528,6 +562,53 @@ theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object �
       (.congr_app (.of_eq (incrementBVars_instantiate_of_ge _ _ (Nat.zero_le n)) _ _) (.refl _)))
   | beta satb sata =>
     exact .trans (.beta _ _) (.of_eq (instantiate_instantiate_of_le _ _ _ (Nat.zero_le n)).symm _ _)
+
+theorem congr_instantiate_right {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
+    {ctx : List (Object ι)} {s₁ s₂ t : LambdaTerm ι κ} {ts tt : Object ι}
+    (satt : Typing ζ (app ++ ts :: ctx) t tt) {sats₁ : Typing ζ (app ++ ctx) s₁ ts}
+    {sats₂ : Typing ζ (app ++ ctx) s₂ ts} (convs : Convertible sats₁ sats₂)
+    (n : Nat) (hn : app.length = n) :
+    Convertible (satt.instantiate app sats₁ n hn) (satt.instantiate app sats₂ n hn) := by
+  induction t generalizing s₁ s₂ n app tt with
+  | of _ => exact .of_eq rfl _ _
+  | unit => exact .of_eq rfl _ _
+  | prod _ _ ihl ihr =>
+    cases satt with
+    | prod satl satr => exact .congr_prod (ihl app satl convs n hn) (ihr app satr convs n hn)
+  | lam dom body ih =>
+    cases satt with
+    | lam satb =>
+      exact .congr_lam (ih (dom :: app) satb (congr_incrementBVars [] convs 0 (Eq.refl 0))
+      (n + 1) (congrArg Nat.succ hn))
+  | app fn arg ihf iha =>
+    cases satt with
+    | app satf sata => exact .congr_app (ihf app satf convs n hn) (iha app sata convs n hn)
+  | left _ ih =>
+    cases satt with
+    | left sat => exact .congr_left (ih app sat convs n hn)
+  | right _ ih =>
+    cases satt with
+    | right sat => exact .congr_right (ih app sat convs n hn)
+  | bvar deBruijnIndex =>
+    cases satt with
+    | bvar satt =>
+      by_cases hd : deBruijnIndex = n
+      · obtain rfl : ts = tt := by grind
+        rw! (castMode := .all) [LambdaTerm.instantiate, if_pos hd,
+          LambdaTerm.instantiate, if_pos hd]
+        rwa [Subsingleton.elim (Eq.rec ..) sats₁, Subsingleton.elim (Eq.rec ..) sats₂]
+      · refine .of_eq ?_ _ _
+        rw [LambdaTerm.instantiate, if_neg hd, LambdaTerm.instantiate, if_neg hd]
+
+theorem congr_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
+    {ctx : List (Object ι)} {s₁ s₂ t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
+    {satt₁ : Typing ζ (app ++ ts :: ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ts :: ctx) t₂ tt}
+    {sats₁ : Typing ζ (app ++ ctx) s₁ ts} {sats₂ : Typing ζ (app ++ ctx) s₂ ts}
+    (convt : Convertible satt₁ satt₂) (convs : Convertible sats₁ sats₂)
+    (n : Nat) (hn : app.length = n) :
+    Convertible (satt₁.instantiate app sats₁ n hn) (satt₂.instantiate app sats₂ n hn) :=
+  (congr_instantiate_left app sats₁ convt n hn).trans (congr_instantiate_right app satt₂ convs n hn)
+
 
 abbrev convertibleSetoid {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (tt : Object ι) :
