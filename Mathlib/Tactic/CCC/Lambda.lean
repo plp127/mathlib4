@@ -631,6 +631,16 @@ def Objectq.toObject₀ {ι : Type u} (o : Objectq ι) : Object₀ ι :=
   | .prod left right => .prod left.toObject₀ right.toObject₀
   | .hom source target => .hom source.toObject₀ (.of target)
 
+def Objectu.toObject₀ {ι : Type u} (o : Objectu ι) : Object₀ ι :=
+  match o with
+  | .of i => .of i
+  | .hom source target => .hom source.toObject₀ target.toObject₀
+
+def Objectu.homs {ι : Type u} (sources : List (Objectu ι)) (target : Objectu ι) : Objectu ι :=
+  match sources with
+  | [] => target
+  | source :: sources => .hom source (.homs sources target)
+
 def Object.elimUnit {ι : Type u} (o : Object ι) : Option (Object₀ ι) :=
   match o with
   | .of i => some (.of i)
@@ -651,6 +661,12 @@ where
     | .of i => .hom kk i
     | .prod left right => .prod (coHom source left kk) (coHom source right kk)
     | .hom source' target => coHom (.prod source source') target (.prod kk source'.elimHom)
+
+def Objectq.elimProd {ι : Type u} (o : Objectq ι) : List (Objectu ι) :=
+  match o with
+  | .of i => [.of i]
+  | .prod left right => left.elimProd ++ right.elimProd
+  | .hom source target => [.homs source.elimProd (.of target)]
 
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι κ × List κ :=
