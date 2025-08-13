@@ -652,6 +652,36 @@ where
     | .prod left right => .prod (coHom source left kk) (coHom source right kk)
     | .hom source' target => coHom (.prod source source') target (.prod kk source'.elimHom)
 
+def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
+    LambdaTerm ι κ × List κ :=
+  match t with
+  | .of k => (.bvar (ks.length + n), k :: ks)
+  | .unit => (.unit, ks)
+  | .prod l r =>
+    letI c := l.abstract ks n
+    letI d := r.abstract c.2 n
+    (.prod c.1 d.1, d.2)
+  | .lam dom body =>
+    letI c := body.abstract ks (n + 1)
+    (.lam dom c.1, c.2)
+  | .app fn arg =>
+    letI c := fn.abstract ks n
+    letI d := arg.abstract c.2 n
+    (.app c.1 d.1, d.2)
+  | .left tup =>
+    letI c := tup.abstract ks n
+    (.left c.1, c.2)
+  | .right tup =>
+    letI c := tup.abstract ks n
+    (.right c.1, c.2)
+  | .bvar deBruijnIndex => (.bvar deBruijnIndex, ks)
+
+def LambdaTerm.lams {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
+    (ks : List (Object ι)) : LambdaTerm ι κ :=
+  match ks with
+  | [] => t
+  | k :: ks => .lam k (t.lams ks)
+
 inductive Morphism {ι : Type u} {κ : Type v} (s t : κ → Object ι) :
     (source target : Object ι) → Type (max u v) where
   | of (k : κ) : Morphism s t (s k) (t k)
