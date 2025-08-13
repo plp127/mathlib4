@@ -605,6 +605,53 @@ theorem congr_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (a
     Convertible (satt₁.instantiate app sats₁ n hn) (satt₂.instantiate app sats₂ n hn) :=
   (congr_instantiate_left app sats₁ convt n hn).trans (congr_instantiate_right app satt₂ convs n hn)
 
+inductive Object₀ (ι : Type u) : Type u where
+  | of (i : ι) : Object₀ ι
+  | prod (left right : Object₀ ι) : Object₀ ι
+  | hom (source target : Object₀ ι) : Object₀ ι
+
+inductive Objectq (ι : Type u) : Type u where
+  | of (i : ι) : Objectq ι
+  | prod (left right : Objectq ι) : Objectq ι
+  | hom (source : Objectq ι) (target : ι) : Objectq ι
+
+inductive Objectu (ι : Type u) where
+  | of (i : ι) : Objectu ι
+  | hom (source target : Objectu ι) : Objectu ι
+
+def Object₀.toObject {ι : Type u} (o : Object₀ ι) : Object ι :=
+  match o with
+  | .of i => .of i
+  | .prod left right => .prod left.toObject right.toObject
+  | .hom source target => .hom source.toObject target.toObject
+
+def Objectq.toObject₀ {ι : Type u} (o : Objectq ι) : Object₀ ι :=
+  match o with
+  | .of i => .of i
+  | .prod left right => .prod left.toObject₀ right.toObject₀
+  | .hom source target => .hom source.toObject₀ (.of target)
+
+def Object.elimUnit {ι : Type u} (o : Object ι) : Option (Object₀ ι) :=
+  match o with
+  | .of i => some (.of i)
+  | .unit => none
+  | .prod left right =>
+    left.elimUnit.elim right.elimUnit fun l => some (right.elimUnit.elim l (.prod l))
+  | .hom source target =>
+    target.elimUnit.map fun i => source.elimUnit.elim i fun k => .hom k i
+
+def Object₀.elimHom {ι : Type u} (o : Object₀ ι) : Objectq ι :=
+  match o with
+  | .of i => .of i
+  | .prod left right => .prod left.elimHom right.elimHom
+  | .hom source target => coHom source target source.elimHom
+where
+  coHom {ι : Type u} (source target : Object₀ ι) (kk : Objectq ι) : Objectq ι :=
+    match target with
+    | .of i => .hom kk i
+    | .prod left right => .prod (coHom source left kk) (coHom source right kk)
+    | .hom source' target => coHom (.prod source source') target (.prod kk source'.elimHom)
+
 inductive Morphism {ι : Type u} {κ : Type v} (s t : κ → Object ι) :
     (source target : Object ι) → Type (max u v) where
   | of (k : κ) : Morphism s t (s k) (t k)
