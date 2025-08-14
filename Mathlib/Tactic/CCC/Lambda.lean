@@ -787,8 +787,7 @@ def Iso.unit_hom {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List
     (.unit (.hom .unit t :: ctx)))
   sati := .lam (.lam (.bvar 1 t (Option.mem_some_self t)))
   left_inv := .trans (.trans (.congr_app (.refl _) (.beta _ _)) (.beta _ _))
-    ((.symm (.trans (.lam_eta _) (.congr_lam (.congr_app (.refl _)
-      (.unit_eta (.bvar 0 .unit (Option.mem_some_self _))))))))
+    ((.symm (.trans (.lam_eta _) (.congr_lam (.congr_app (.refl _) (.unit_eta _))))))
   right_inv := .trans (.congr_app (.refl _) (.beta _ _)) (.trans (.beta _ _) (.beta _ _))
 
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
