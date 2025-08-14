@@ -749,6 +749,48 @@ def Iso.trans {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (O
       (.congr_app (.refl _) (.congr_incrementBVars [t₂] iso₁₂.right_inv 1 (Eq.refl 1)))) (.refl _)))
     simp [← incrementBVars_incrementBVars_of_ge, instantiate_incrementBVars]
 
+def Iso.unit_prod {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (t : Object ι) : Iso ζ ctx (.prod .unit t) t where
+  hom := .lam (.prod .unit t) (.right (.bvar 0))
+  inv := .lam t (.prod .unit (.bvar 0))
+  sath := .lam (.right (.bvar 0 (.prod .unit t) (Option.mem_some_self _)))
+  sati := .lam (.prod (.unit (t :: ctx)) (.bvar 0 t (Option.mem_some_self t)))
+  left_inv := .trans (.beta _ _) (.trans (.congr_prod (.symm (.unit_eta _))
+    (.beta _ _)) (.symm (.prod_eta _)))
+  right_inv := .trans (.beta _ _) (.trans (.congr_right (.beta _ _)) (.prod_right _ _))
+
+def Iso.prod_unit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (t : Object ι) : Iso ζ ctx (.prod t .unit) t where
+  hom := .lam (.prod t .unit) (.left (.bvar 0))
+  inv := .lam t (.prod (.bvar 0) .unit)
+  sath := .lam (.left (.bvar 0 (.prod t .unit) (Option.mem_some_self _)))
+  sati := .lam (.prod (.bvar 0 t (Option.mem_some_self t)) (.unit (t :: ctx)))
+  left_inv := .trans (.beta _ _) (.trans (.congr_prod (.beta _ _)
+    (.symm (.unit_eta _))) (.symm (.prod_eta _)))
+  right_inv := .trans (.beta _ _) (.trans (.congr_left (.beta _ _)) (.prod_left _ _))
+
+def Iso.hom_unit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (t : Object ι) : Iso ζ ctx (.hom t .unit) .unit where
+  hom := .lam (.hom t .unit) .unit
+  inv := .lam .unit (.lam t .unit)
+  sath := .lam (.unit (.hom t .unit :: ctx))
+  sati := .lam (.lam (.unit (t :: .unit :: ctx)))
+  left_inv := .trans (.trans (.lam_eta _) (.congr_lam (.unit_eta _)))
+    (.trans (.congr_lam (.symm (.unit_eta _))) (.symm (.lam_eta _)))
+  right_inv := .trans (.unit_eta _) (.symm (.unit_eta _))
+
+def Iso.unit_hom {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (t : Object ι) : Iso ζ ctx (.hom .unit t) t where
+  hom := .lam (.hom .unit t) (.app (.bvar 0) .unit)
+  inv := .lam t (.lam .unit (.bvar 1))
+  sath := .lam (.app (.bvar 0 (.hom .unit t) (Option.mem_some_self _))
+    (.unit (.hom .unit t :: ctx)))
+  sati := .lam (.lam (.bvar 1 t (Option.mem_some_self t)))
+  left_inv := .trans (.trans (.congr_app (.refl _) (.beta _ _)) (.beta _ _))
+    ((.symm (.trans (.lam_eta _) (.congr_lam (.congr_app (.refl _)
+      (.unit_eta (.bvar 0 .unit (Option.mem_some_self _))))))))
+  right_inv := .trans (.congr_app (.refl _) (.beta _ _)) (.trans (.beta _ _) (.beta _ _))
+
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι Empty × List κ :=
   match t with
