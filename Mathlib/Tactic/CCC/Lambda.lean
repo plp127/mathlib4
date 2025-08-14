@@ -500,8 +500,8 @@ theorem instantiate_instantiate_of_le {ι : Type u} {κ : Type v} (t : LambdaTer
       instantiate_incrementBVars]
     grind
 
-theorem congr_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
-    {ctx : List (Object ι)} {t₁ t₂ : LambdaTerm ι κ} {tu tt : Object ι}
+theorem Convertible.congr_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    (app : List (Object ι)) {ctx : List (Object ι)} {t₁ t₂ : LambdaTerm ι κ} {tu tt : Object ι}
     {satt₁ : Typing ζ (app ++ ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ctx) t₂ tt}
     (convt : Convertible satt₁ satt₂) (n : Nat) (hn : app.length = n) :
     Convertible (satt₁.incrementBVars app tu n hn) (satt₂.incrementBVars app tu n hn) := by
@@ -530,8 +530,8 @@ theorem congr_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     exact .trans (.beta _ _) (.of_eq
       (incrementBVars_instantiate_of_le _ _ (Nat.zero_le n)).symm _ _)
 
-theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
-    {ctx : List (Object ι)} {s t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
+theorem Convertible.congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    (app : List (Object ι)) {ctx : List (Object ι)} {s t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
     {satt₁ : Typing ζ (app ++ ts :: ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ts :: ctx) t₂ tt}
     (sats : Typing ζ (app ++ ctx) s ts) (convt : Convertible satt₁ satt₂)
     (n : Nat) (hn : app.length = n) :
@@ -559,8 +559,8 @@ theorem congr_instantiate_left {ι : Type u} {κ : Type v} {ζ : κ → Object �
   | beta satb sata =>
     exact .trans (.beta _ _) (.of_eq (instantiate_instantiate_of_le _ _ _ (Nat.zero_le n)).symm _ _)
 
-theorem congr_instantiate_right {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
-    {ctx : List (Object ι)} {s₁ s₂ t : LambdaTerm ι κ} {ts tt : Object ι}
+theorem Convertible.congr_instantiate_right {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    (app : List (Object ι)) {ctx : List (Object ι)} {s₁ s₂ t : LambdaTerm ι κ} {ts tt : Object ι}
     (satt : Typing ζ (app ++ ts :: ctx) t tt) {sats₁ : Typing ζ (app ++ ctx) s₁ ts}
     {sats₂ : Typing ζ (app ++ ctx) s₂ ts} (convs : Convertible sats₁ sats₂)
     (n : Nat) (hn : app.length = n) :
@@ -574,7 +574,7 @@ theorem congr_instantiate_right {ι : Type u} {κ : Type v} {ζ : κ → Object 
   | lam dom body ih =>
     cases satt with
     | lam satb =>
-      exact .congr_lam (ih (dom :: app) satb (congr_incrementBVars [] convs 0 (Eq.refl 0))
+      exact .congr_lam (ih (dom :: app) satb (.congr_incrementBVars [] convs 0 (Eq.refl 0))
       (n + 1) (congrArg Nat.succ hn))
   | app fn arg ihf iha =>
     cases satt with
@@ -596,14 +596,17 @@ theorem congr_instantiate_right {ι : Type u} {κ : Type v} {ζ : κ → Object 
       · refine .of_eq ?_ _ _
         rw [LambdaTerm.instantiate, if_neg hd, LambdaTerm.instantiate, if_neg hd]
 
-theorem congr_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
-    {ctx : List (Object ι)} {s₁ s₂ t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
+theorem Convertible.congr_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    (app : List (Object ι)) {ctx : List (Object ι)}
+    {s₁ s₂ t₁ t₂ : LambdaTerm ι κ} {ts tt : Object ι}
     {satt₁ : Typing ζ (app ++ ts :: ctx) t₁ tt} {satt₂ : Typing ζ (app ++ ts :: ctx) t₂ tt}
     {sats₁ : Typing ζ (app ++ ctx) s₁ ts} {sats₂ : Typing ζ (app ++ ctx) s₂ ts}
     (convt : Convertible satt₁ satt₂) (convs : Convertible sats₁ sats₂)
     (n : Nat) (hn : app.length = n) :
     Convertible (satt₁.instantiate app sats₁ n hn) (satt₂.instantiate app sats₂ n hn) :=
-  (congr_instantiate_left app sats₁ convt n hn).trans (congr_instantiate_right app satt₂ convs n hn)
+  .trans
+    (.congr_instantiate_left app sats₁ convt n hn)
+    (.congr_instantiate_right app satt₂ convs n hn)
 
 nonrec theorem Convertible.instantiate_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (app : List (Object ι)) {ctx : List (Object ι)} {s t : LambdaTerm ι κ} {ts tt : Object ι}
@@ -731,7 +734,7 @@ def Iso.trans {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (O
       (.incrementBVars [] t₂ (iso₁₂.sati.incrementBVars [] t₁ 0 (Eq.refl 0)) 0 (Eq.refl 0))
       (.bvar 0 t₂ (Option.mem_some_self t₂))) _)
     refine .trans (.of_eq ?_ _ _) (.trans (.symm (.beta _ _)) (.congr_app (.congr_lam
-      (.congr_app (.refl _) (congr_incrementBVars [t₂] iso₂₃.left_inv 1 (Eq.refl 1)))) (.refl _)))
+      (.congr_app (.refl _) (.congr_incrementBVars [t₂] iso₂₃.left_inv 1 (Eq.refl 1)))) (.refl _)))
     simp [← incrementBVars_incrementBVars_of_ge, instantiate_incrementBVars]
   right_inv := by
     refine .trans (.trans (.congr_app (.refl _) (.beta _ _)) (.beta _ _)) ?_
@@ -743,7 +746,7 @@ def Iso.trans {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (O
       (.incrementBVars [] t₂ (iso₂₃.sath.incrementBVars [] t₃ 0 (Eq.refl 0)) 0 (Eq.refl 0))
       (.bvar 0 t₂ (Option.mem_some_self t₂))) _)
     refine .trans (.of_eq ?_ _ _) (.trans (.symm (.beta _ _)) (.congr_app (.congr_lam
-      (.congr_app (.refl _) (congr_incrementBVars [t₂] iso₁₂.right_inv 1 (Eq.refl 1)))) (.refl _)))
+      (.congr_app (.refl _) (.congr_incrementBVars [t₂] iso₁₂.right_inv 1 (Eq.refl 1)))) (.refl _)))
     simp [← incrementBVars_incrementBVars_of_ge, instantiate_incrementBVars]
 
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
