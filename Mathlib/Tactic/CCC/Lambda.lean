@@ -468,7 +468,7 @@ theorem incrementBVars_instantiate_of_ge {ι : Type u} {κ : Type v} (t : Lambda
   | of _ => rfl
   | unit => rfl
   | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl s h) (ihr s h)
-  | lam dom body ih =>
+  | lam _ _ ih =>
     rw [LambdaTerm.instantiate, LambdaTerm.incrementBVars, ih _ (Nat.add_le_add_right h 1),
       ← incrementBVars_incrementBVars_of_ge _ (Nat.zero_le m), ← LambdaTerm.instantiate,
       ← LambdaTerm.incrementBVars]
@@ -488,7 +488,7 @@ theorem instantiate_instantiate_of_le {ι : Type u} {κ : Type v} (t : LambdaTer
   | of _ => rfl
   | unit => rfl
   | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl s₁ s₂ h) (ihr s₁ s₂ h)
-  | lam dom body ih =>
+  | lam _ _ ih =>
     rw [LambdaTerm.instantiate, LambdaTerm.instantiate, ih _ _ (Nat.add_le_add_right h 1),
       ← incrementBVars_instantiate_of_ge _ _ (Nat.zero_le m), ← LambdaTerm.instantiate,
       ← incrementBVars_incrementBVars_of_ge _ (Nat.zero_le n), ← LambdaTerm.instantiate]
@@ -498,6 +498,62 @@ theorem instantiate_instantiate_of_le {ι : Type u} {κ : Type v} (t : LambdaTer
   | bvar deBruijnIndex =>
     simp only [LambdaTerm.instantiate, apply_ite LambdaTerm.instantiate, ite_apply,
       instantiate_incrementBVars]
+    grind
+
+theorem instantiate_instantiate_of_ge {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
+    (s₁ s₂ : LambdaTerm ι κ) {n m : ℕ} (h : m ≤ n) :
+    (t.instantiate (n + 1) s₁).instantiate m s₂ =
+      (t.instantiate m (s₂.incrementBVars n)).instantiate n (s₁.instantiate m s₂) := by
+  induction t generalizing n m s₁ s₂ with
+  | of _ => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl s₁ s₂ h) (ihr s₁ s₂ h)
+  | lam _ _ ih =>
+    rw [LambdaTerm.instantiate, LambdaTerm.instantiate, ih _ _ (Nat.add_le_add_right h 1),
+      ← incrementBVars_instantiate_of_ge _ _ (Nat.zero_le m), ← LambdaTerm.instantiate,
+      ← incrementBVars_incrementBVars_of_ge _ (Nat.zero_le n), ← LambdaTerm.instantiate]
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app (ihf s₁ s₂ h) (iha s₁ s₂ h)
+  | left _ ih => exact congrArg LambdaTerm.left (ih s₁ s₂ h)
+  | right _ ih => exact congrArg LambdaTerm.right (ih s₁ s₂ h)
+  | bvar deBruijnIndex =>
+    simp only [LambdaTerm.instantiate, apply_ite LambdaTerm.instantiate, ite_apply,
+      instantiate_incrementBVars]
+    grind
+
+theorem instantiate_incrementBVars_comm {ι : Type u} {κ : Type v}
+    (t₁ t₂ : LambdaTerm ι κ) (n : ℕ) :
+    (t₁.incrementBVars n).instantiate (n + 1) t₂ =
+      (t₁.incrementBVars (n + 1)).instantiate n t₂ := by
+  induction t₁ generalizing n t₂ with
+  | of _ => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl t₂ n) (ihr t₂ n)
+  | lam dom _ ih => exact congrArg (LambdaTerm.lam dom) (ih (t₂.incrementBVars 0) (n + 1))
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app (ihf t₂ n) (iha t₂ n)
+  | left _ ih => exact congrArg LambdaTerm.left (ih t₂ n)
+  | right _ ih => exact congrArg LambdaTerm.right (ih t₂ n)
+  | bvar deBruijnIndex =>
+    simp only [LambdaTerm.incrementBVars, LambdaTerm.instantiate,
+      apply_ite LambdaTerm.instantiate, ite_apply]
+    grind
+
+theorem instantiate_incrementBVars_assoc {ι : Type u} {κ : Type v}
+    (t₁ t₂ t₃ : LambdaTerm ι κ) (n : ℕ) :
+    (((t₁.incrementBVars (n + 1)).instantiate n t₂).incrementBVars (n + 1)).instantiate n t₃ =
+      (t₁.incrementBVars (n + 1)).instantiate n ((t₂.incrementBVars (n + 1)).instantiate n t₃) := by
+  induction t₁ generalizing n t₂ t₃ with
+  | of _ => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl t₂ t₃ n) (ihr t₂ t₃ n)
+  | lam dom _ ih =>
+    simp [LambdaTerm.incrementBVars, LambdaTerm.instantiate, ih,
+      ← incrementBVars_incrementBVars_of_ge, ← incrementBVars_instantiate_of_ge]
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app (ihf t₂ t₃ n) (iha t₂ t₃ n)
+  | left _ ih => exact congrArg LambdaTerm.left (ih t₂ t₃ n)
+  | right _ ih => exact congrArg LambdaTerm.right (ih t₂ t₃ n)
+  | bvar deBruijnIndex =>
+    simp only [LambdaTerm.incrementBVars, LambdaTerm.instantiate,
+      apply_ite (LambdaTerm.incrementBVars _), apply_ite LambdaTerm.instantiate, ite_apply]
     grind
 
 theorem Convertible.congr_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
@@ -575,7 +631,7 @@ theorem Convertible.congr_instantiate_right {ι : Type u} {κ : Type v} {ζ : κ
     cases satt with
     | lam satb =>
       exact .congr_lam (ih (dom :: app) satb (.congr_incrementBVars [] convs 0 (Eq.refl 0))
-      (n + 1) (congrArg Nat.succ hn))
+        (n + 1) (congrArg Nat.succ hn))
   | app fn arg ihf iha =>
     cases satt with
     | app satf sata => exact .congr_app (ihf app satf convs n hn) (iha app sata convs n hn)
@@ -682,29 +738,23 @@ structure Iso {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (O
     (source target : Object ι) where
   hom : LambdaTerm ι κ
   inv : LambdaTerm ι κ
-  sath : Typing ζ ctx hom (.hom source target)
-  sati : Typing ζ ctx inv (.hom target source)
+  sath : Typing ζ (source :: ctx) hom target
+  sati : Typing ζ (target :: ctx) inv source
   left_inv : Convertible
-    (.app (sati.incrementBVars [] source 0 (Eq.refl 0))
-      (.app
-        (sath.incrementBVars [] source 0 (Eq.refl 0))
-        (.bvar 0 source (Option.mem_some_self source))))
+    ((sati.incrementBVars [target] source 1 (Eq.refl 1)).instantiate [] sath 0 (Eq.refl 0))
     (.bvar 0 source (Option.mem_some_self source))
   right_inv : Convertible
-    (.app (sath.incrementBVars [] target 0 (Eq.refl 0))
-      (.app
-        (sati.incrementBVars [] target 0 (Eq.refl 0))
-        (.bvar 0 target (Option.mem_some_self target))))
+    ((sath.incrementBVars [source] target 1 (Eq.refl 1)).instantiate [] sati 0 (Eq.refl 0))
     (.bvar 0 target (Option.mem_some_self target))
 
 def Iso.refl {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (type : Object ι) : Iso ζ ctx type type where
-  hom := .lam type (.bvar 0)
-  inv := .lam type (.bvar 0)
-  sath := .lam (.bvar 0 type (Option.mem_some_self type))
-  sati := .lam (.bvar 0 type (Option.mem_some_self type))
-  left_inv := .trans (.beta _ _) (.beta _ _)
-  right_inv := .trans (.beta _ _) (.beta _ _)
+  hom := .bvar 0
+  inv := .bvar 0
+  sath := .bvar 0 type (Option.mem_some_self type)
+  sati := .bvar 0 type (Option.mem_some_self type)
+  left_inv := .refl _
+  right_inv := .refl _
 
 def Iso.symm {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
     {source target : Object ι} (iso : Iso ζ ctx source target) : Iso ζ ctx target source where
@@ -714,81 +764,64 @@ def Iso.symm {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Ob
   sati := iso.sath
   left_inv := iso.right_inv
   right_inv := iso.left_inv
-
+set_option pp.fieldNotation.generalized false
+open LambdaTerm in
 def Iso.trans {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
     {t₁ t₂ t₃ : Object ι} (iso₁₂ : Iso ζ ctx t₁ t₂) (iso₂₃ : Iso ζ ctx t₂ t₃) :
     Iso ζ ctx t₁ t₃ where
-  hom := .lam t₁ (.app (iso₂₃.hom.incrementBVars 0) (.app (iso₁₂.hom.incrementBVars 0) (.bvar 0)))
-  inv := .lam t₃ (.app (iso₁₂.inv.incrementBVars 0) (.app (iso₂₃.inv.incrementBVars 0) (.bvar 0)))
-  sath := .lam (.app (iso₂₃.sath.incrementBVars [] t₁ 0 (Eq.refl 0))
-    (.app (iso₁₂.sath.incrementBVars [] t₁ 0 (Eq.refl 0)) (.bvar 0 t₁ (Option.mem_some_self t₁))))
-  sati := .lam (.app (iso₁₂.sati.incrementBVars [] t₃ 0 (Eq.refl 0))
-    (.app (iso₂₃.sati.incrementBVars [] t₃ 0 (Eq.refl 0)) (.bvar 0 t₃ (Option.mem_some_self t₃))))
+  hom := (iso₂₃.hom.incrementBVars 1).instantiate 0 iso₁₂.hom
+  inv := (iso₁₂.inv.incrementBVars 1).instantiate 0 iso₂₃.inv
+  sath := (iso₂₃.sath.incrementBVars [t₂] t₁ 1 (Eq.refl 1)).instantiate [] iso₁₂.sath 0 (Eq.refl 0)
+  sati := (iso₁₂.sati.incrementBVars [t₂] t₃ 1 (Eq.refl 1)).instantiate [] iso₂₃.sati 0 (Eq.refl 0)
   left_inv := by
-    refine .trans (.trans (.congr_app (.refl _) (.beta _ _)) (.beta _ _)) ?_
     refine .trans ?_ iso₁₂.left_inv
-    refine .trans ?_ (.congr_app (.instantiate_incrementBVars [] _
-      (.app (iso₁₂.sath.incrementBVars [] t₁ 0 (Eq.refl 0))
-        (.bvar 0 t₁ (Option.mem_some_self t₁))) 0 (Eq.refl 0)) (.refl _))
-    refine .trans ?_ (.beta (.app
-      (.incrementBVars [] t₂ (iso₁₂.sati.incrementBVars [] t₁ 0 (Eq.refl 0)) 0 (Eq.refl 0))
-      (.bvar 0 t₂ (Option.mem_some_self t₂))) _)
-    refine .trans (.of_eq ?_ _ _) (.trans (.symm (.beta _ _)) (.congr_app (.congr_lam
-      (.congr_app (.refl _) (.congr_incrementBVars [t₂] iso₂₃.left_inv 1 (Eq.refl 1)))) (.refl _)))
-    simp [← incrementBVars_incrementBVars_of_ge, instantiate_incrementBVars]
+    refine .trans ?_ (.congr_instantiate_right [] _ ( (.congr_instantiate_left [] iso₁₂.sath
+        (.congr_incrementBVars [t₂] iso₂₃.left_inv 1 (Eq.refl 1)) 0 (Eq.refl 0))) 0 (Eq.refl 0))
+    refine .of_eq ?_ _ _
+    simp [instantiate_incrementBVars_assoc]
   right_inv := by
-    refine .trans (.trans (.congr_app (.refl _) (.beta _ _)) (.beta _ _)) ?_
     refine .trans ?_ iso₂₃.right_inv
-    refine .trans ?_ (.congr_app (.instantiate_incrementBVars [] _
-      (.app (iso₂₃.sati.incrementBVars [] t₃ 0 (Eq.refl 0))
-        (.bvar 0 t₃ (Option.mem_some_self t₃))) 0 (Eq.refl 0)) (.refl _))
-    refine .trans ?_ (.beta (.app
-      (.incrementBVars [] t₂ (iso₂₃.sath.incrementBVars [] t₃ 0 (Eq.refl 0)) 0 (Eq.refl 0))
-      (.bvar 0 t₂ (Option.mem_some_self t₂))) _)
-    refine .trans (.of_eq ?_ _ _) (.trans (.symm (.beta _ _)) (.congr_app (.congr_lam
-      (.congr_app (.refl _) (.congr_incrementBVars [t₂] iso₁₂.right_inv 1 (Eq.refl 1)))) (.refl _)))
-    simp [← incrementBVars_incrementBVars_of_ge, instantiate_incrementBVars]
+    refine .trans ?_ (.congr_instantiate_right [] _ ( (.congr_instantiate_left [] iso₂₃.sati
+        (.congr_incrementBVars [t₂] iso₁₂.right_inv 1 (Eq.refl 1)) 0 (Eq.refl 0))) 0 (Eq.refl 0))
+    refine .of_eq ?_ _ _
+    simp [instantiate_incrementBVars_assoc]
 
 def Iso.unit_prod {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (t : Object ι) : Iso ζ ctx (.prod .unit t) t where
-  hom := .lam (.prod .unit t) (.right (.bvar 0))
-  inv := .lam t (.prod .unit (.bvar 0))
-  sath := .lam (.right (.bvar 0 (.prod .unit t) (Option.mem_some_self _)))
-  sati := .lam (.prod (.unit (t :: ctx)) (.bvar 0 t (Option.mem_some_self t)))
-  left_inv := .trans (.beta _ _) (.trans (.congr_prod (.symm (.unit_eta _))
-    (.beta _ _)) (.symm (.prod_eta _)))
-  right_inv := .trans (.beta _ _) (.trans (.congr_right (.beta _ _)) (.prod_right _ _))
+  hom := .right (.bvar 0)
+  inv := .prod .unit (.bvar 0)
+  sath := .right (.bvar 0 (.prod .unit t) (Option.mem_some_self _))
+  sati := .prod (.unit (t :: ctx)) (.bvar 0 t (Option.mem_some_self t))
+  left_inv := .symm (.trans (.prod_eta _) (.congr_prod (.unit_eta _) (.refl _)))
+  right_inv := .prod_right _ _
 
 def Iso.prod_unit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (t : Object ι) : Iso ζ ctx (.prod t .unit) t where
-  hom := .lam (.prod t .unit) (.left (.bvar 0))
-  inv := .lam t (.prod (.bvar 0) .unit)
-  sath := .lam (.left (.bvar 0 (.prod t .unit) (Option.mem_some_self _)))
-  sati := .lam (.prod (.bvar 0 t (Option.mem_some_self t)) (.unit (t :: ctx)))
-  left_inv := .trans (.beta _ _) (.trans (.congr_prod (.beta _ _)
-    (.symm (.unit_eta _))) (.symm (.prod_eta _)))
-  right_inv := .trans (.beta _ _) (.trans (.congr_left (.beta _ _)) (.prod_left _ _))
+  hom := .left (.bvar 0)
+  inv := .prod (.bvar 0) .unit
+  sath := .left (.bvar 0 (.prod t .unit) (Option.mem_some_self _))
+  sati := .prod (.bvar 0 t (Option.mem_some_self t)) (.unit (t :: ctx))
+  left_inv := .symm (.trans (.prod_eta _) (.congr_prod (.refl _) (.unit_eta _)))
+  right_inv := .prod_left _ _
 
 def Iso.hom_unit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (t : Object ι) : Iso ζ ctx (.hom t .unit) .unit where
-  hom := .lam (.hom t .unit) .unit
-  inv := .lam .unit (.lam t .unit)
-  sath := .lam (.unit (.hom t .unit :: ctx))
-  sati := .lam (.lam (.unit (t :: .unit :: ctx)))
+  hom := .unit
+  inv := .lam t .unit
+  sath := .unit (.hom t .unit :: ctx)
+  sati := .lam (.unit (t :: .unit :: ctx))
   left_inv := .trans (.trans (.lam_eta _) (.congr_lam (.unit_eta _)))
     (.trans (.congr_lam (.symm (.unit_eta _))) (.symm (.lam_eta _)))
   right_inv := .trans (.unit_eta _) (.symm (.unit_eta _))
 
 def Iso.unit_hom {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (t : Object ι) : Iso ζ ctx (.hom .unit t) t where
-  hom := .lam (.hom .unit t) (.app (.bvar 0) .unit)
-  inv := .lam t (.lam .unit (.bvar 1))
-  sath := .lam (.app (.bvar 0 (.hom .unit t) (Option.mem_some_self _))
-    (.unit (.hom .unit t :: ctx)))
-  sati := .lam (.lam (.bvar 1 t (Option.mem_some_self t)))
-  left_inv := .trans (.trans (.congr_app (.refl _) (.beta _ _)) (.beta _ _))
-    ((.symm (.trans (.lam_eta _) (.congr_lam (.congr_app (.refl _) (.unit_eta _))))))
-  right_inv := .trans (.congr_app (.refl _) (.beta _ _)) (.trans (.beta _ _) (.beta _ _))
+  hom := .app (.bvar 0) .unit
+  inv := .lam .unit (.bvar 1)
+  sath := .app (.bvar 0 (.hom .unit t) (Option.mem_some_self _)) (.unit (.hom .unit t :: ctx))
+  sati := .lam (.bvar 1 t (Option.mem_some_self t))
+  left_inv := .symm (.trans (.lam_eta _) (.congr_lam (.congr_app (.refl _) (.unit_eta _))))
+  right_inv := .beta _ _
 
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι Empty × List κ :=
