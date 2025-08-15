@@ -764,8 +764,7 @@ def Iso.symm {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Ob
   sati := iso.sath
   left_inv := iso.right_inv
   right_inv := iso.left_inv
-set_option pp.fieldNotation.generalized false
-open LambdaTerm in
+
 def Iso.trans {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
     {t₁ t₂ t₃ : Object ι} (iso₁₂ : Iso ζ ctx t₁ t₂) (iso₂₃ : Iso ζ ctx t₂ t₃) :
     Iso ζ ctx t₁ t₃ where
@@ -775,18 +774,18 @@ def Iso.trans {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (O
   sati := (iso₁₂.sati.incrementBVars [t₂] t₃ 1 (Eq.refl 1)).instantiate [] iso₂₃.sati 0 (Eq.refl 0)
   left_inv := by
     refine .trans ?_ iso₁₂.left_inv
-    refine .trans ?_ (.congr_instantiate_right [] _ ( (.congr_instantiate_left [] iso₁₂.sath
-        (.congr_incrementBVars [t₂] iso₂₃.left_inv 1 (Eq.refl 1)) 0 (Eq.refl 0))) 0 (Eq.refl 0))
+    refine .trans ?_ (.congr_instantiate_right [] _ (.congr_instantiate_left [] iso₁₂.sath
+        (.congr_incrementBVars [t₂] iso₂₃.left_inv 1 (Eq.refl 1)) 0 (Eq.refl 0)) 0 (Eq.refl 0))
     refine .of_eq ?_ _ _
-    simp [instantiate_incrementBVars_assoc]
+    simp only [instantiate_incrementBVars_assoc]
   right_inv := by
     refine .trans ?_ iso₂₃.right_inv
-    refine .trans ?_ (.congr_instantiate_right [] _ ( (.congr_instantiate_left [] iso₂₃.sati
-        (.congr_incrementBVars [t₂] iso₁₂.right_inv 1 (Eq.refl 1)) 0 (Eq.refl 0))) 0 (Eq.refl 0))
+    refine .trans ?_ (.congr_instantiate_right [] _ (.congr_instantiate_left [] iso₂₃.sati
+        (.congr_incrementBVars [t₂] iso₁₂.right_inv 1 (Eq.refl 1)) 0 (Eq.refl 0)) 0 (Eq.refl 0))
     refine .of_eq ?_ _ _
-    simp [instantiate_incrementBVars_assoc]
+    simp only [instantiate_incrementBVars_assoc]
 
-def Iso.unit_prod {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+def Iso.unitProd {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (t : Object ι) : Iso ζ ctx (.prod .unit t) t where
   hom := .right (.bvar 0)
   inv := .prod .unit (.bvar 0)
@@ -795,7 +794,7 @@ def Iso.unit_prod {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : Lis
   left_inv := .symm (.trans (.prod_eta _) (.congr_prod (.unit_eta _) (.refl _)))
   right_inv := .prod_right _ _
 
-def Iso.prod_unit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+def Iso.prodUnit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (t : Object ι) : Iso ζ ctx (.prod t .unit) t where
   hom := .left (.bvar 0)
   inv := .prod (.bvar 0) .unit
@@ -804,7 +803,7 @@ def Iso.prod_unit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : Lis
   left_inv := .symm (.trans (.prod_eta _) (.congr_prod (.refl _) (.unit_eta _)))
   right_inv := .prod_left _ _
 
-def Iso.hom_unit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+def Iso.homUnit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (t : Object ι) : Iso ζ ctx (.hom t .unit) .unit where
   hom := .unit
   inv := .lam t .unit
@@ -814,7 +813,7 @@ def Iso.hom_unit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List
     (.trans (.congr_lam (.symm (.unit_eta _))) (.symm (.lam_eta _)))
   right_inv := .trans (.unit_eta _) (.symm (.unit_eta _))
 
-def Iso.unit_hom {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+def Iso.unitHom {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (t : Object ι) : Iso ζ ctx (.hom .unit t) t where
   hom := .app (.bvar 0) .unit
   inv := .lam .unit (.bvar 1)
@@ -822,6 +821,101 @@ def Iso.unit_hom {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List
   sati := .lam (.bvar 1 t (Option.mem_some_self t))
   left_inv := .symm (.trans (.lam_eta _) (.congr_lam (.congr_app (.refl _) (.unit_eta _))))
   right_inv := .beta _ _
+
+def Iso.prodCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {left₁ right₁ left₂ right₂ : Object ι}
+    (left : Iso ζ ctx left₁ left₂) (right : Iso ζ ctx right₁ right₂) :
+    Iso ζ ctx (.prod left₁ right₁) (.prod left₂ right₂) where
+  hom := .prod
+    ((left.hom.incrementBVars 1).instantiate 0 (.left (.bvar 0)))
+    ((right.hom.incrementBVars 1).instantiate 0 (.right (.bvar 0)))
+  inv := .prod
+    ((left.inv.incrementBVars 1).instantiate 0 (.left (.bvar 0)))
+    ((right.inv.incrementBVars 1).instantiate 0 (.right (.bvar 0)))
+  sath := .prod
+    ((left.sath.incrementBVars [left₁] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
+      (.left (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))
+    ((right.sath.incrementBVars [right₁] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
+      (.right (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))
+  sati := .prod
+    ((left.sati.incrementBVars [left₂] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
+      (.left (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))
+    ((right.sati.incrementBVars [right₂] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
+      (.right (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))
+  left_inv := by
+    refine .trans (.congr_prod ?_ ?_) (.symm (.prod_eta _))
+    · refine .trans ?_ (.congr_instantiate_left [] _
+        (.congr_incrementBVars [left₁] left.left_inv 1 (Eq.refl 1)) 0 (Eq.refl 0))
+      refine .trans ?_ (.congr_instantiate_left [] _ (.refl _) 0 (Eq.refl 0))
+      refine .trans (.of_eq (instantiate_incrementBVars_assoc _ _ _ 0) _
+        ((left.sati.incrementBVars [left₂] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
+          (.left (.prod
+            ((left.sath.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+              (.left (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))
+            ((right.sath.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+              (.right (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))))
+          0 (Eq.refl 0))) ?_
+      refine .trans (.congr_instantiate_right [] _ (.prod_left _ _) 0 (Eq.refl 0)) (.of_eq ?_ _ _)
+      simp only [instantiate_incrementBVars_assoc]
+    · refine .trans ?_ (.congr_instantiate_left [] _
+        (.congr_incrementBVars [right₁] right.left_inv 1 (Eq.refl 1)) 0 (Eq.refl 0))
+      refine .trans ?_ (.congr_instantiate_left [] _ (.refl _) 0 (Eq.refl 0))
+      refine .trans (.of_eq (instantiate_incrementBVars_assoc _ _ _ 0) _
+        ((right.sati.incrementBVars [right₂] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
+          (.right (.prod
+            ((left.sath.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+              (.left (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))
+            ((right.sath.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+              (.right (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))))
+          0 (Eq.refl 0))) ?_
+      refine .trans (.congr_instantiate_right [] _ (.prod_right _ _) 0 (Eq.refl 0)) (.of_eq ?_ _ _)
+      simp only [instantiate_incrementBVars_assoc]
+  right_inv := by
+    refine .trans (.congr_prod ?_ ?_) (.symm (.prod_eta _))
+    · refine .trans ?_ (.congr_instantiate_left [] _
+        (.congr_incrementBVars [left₂] left.right_inv 1 (Eq.refl 1)) 0 (Eq.refl 0))
+      refine .trans ?_ (.congr_instantiate_left [] _ (.refl _) 0 (Eq.refl 0))
+      refine .trans (.of_eq (instantiate_incrementBVars_assoc _ _ _ 0) _
+        ((left.sath.incrementBVars [left₁] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
+          (.left (.prod
+            ((left.sati.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+              (.left (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))
+            ((right.sati.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+              (.right (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))))
+          0 (Eq.refl 0))) ?_
+      refine .trans (.congr_instantiate_right [] _ (.prod_left _ _) 0 (Eq.refl 0)) (.of_eq ?_ _ _)
+      simp only [instantiate_incrementBVars_assoc]
+    · refine .trans ?_ (.congr_instantiate_left [] _
+        (.congr_incrementBVars [right₂] right.right_inv 1 (Eq.refl 1)) 0 (Eq.refl 0))
+      refine .trans ?_ (.congr_instantiate_left [] _ (.refl _) 0 (Eq.refl 0))
+      refine .trans (.of_eq (instantiate_incrementBVars_assoc _ _ _ 0) _
+        ((right.sath.incrementBVars [right₁] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
+          (.right (.prod
+            ((left.sati.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+              (.left (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))
+            ((right.sati.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+              (.right (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))))
+          0 (Eq.refl 0))) ?_
+      refine .trans (.congr_instantiate_right [] _ (.prod_right _ _) 0 (Eq.refl 0)) (.of_eq ?_ _ _)
+      simp only [instantiate_incrementBVars_assoc]
+
+def Iso.elimUnit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (o : Object ι) : Iso ζ ctx o (o.elimUnit.elim Object.unit Object₀.toObject) :=
+  match o with
+  | .of i => .refl ζ ctx (.of i)
+  | .unit => .refl ζ ctx .unit
+  | .prod left right =>
+    Option.rec (motive := fun u => Iso ζ ctx left (u.elim Object.unit Object₀.toObject) →
+        Iso ζ ctx (.prod left right) ((u.elim right.elimUnit fun l =>
+          some (right.elimUnit.elim l (.prod l))).elim Object.unit Object₀.toObject))
+      (fun ihl => .trans (.prodCongr ihl (.elimUnit ζ ctx right)) (.unitProd ζ ctx _))
+      (fun u ihl =>
+        Option.rec (motive := fun v => Iso ζ ctx right (v.elim Object.unit Object₀.toObject) →
+            Iso ζ ctx (.prod left right) (Object₀.toObject (v.elim u (.prod u))))
+          (fun ihr => .trans (.prodCongr ihl ihr) (.prodUnit ζ ctx u.toObject))
+          (fun _ ihr => .prodCongr ihl ihr) right.elimUnit (.elimUnit ζ ctx right))
+      left.elimUnit (.elimUnit ζ ctx left)
+  | .hom source target => sorry
 
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι Empty × List κ :=
