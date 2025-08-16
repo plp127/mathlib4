@@ -850,9 +850,9 @@ def Iso.prodCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : Lis
       refine .trans (.of_eq (instantiate_incrementBVars_assoc _ _ _ 0) _
         ((left.sati.incrementBVars [left₂] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
           (.left (.prod
-            ((left.sath.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+            ((left.sath.incrementBVars [left₁] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
               (.left (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))
-            ((right.sath.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+            ((right.sath.incrementBVars [right₁] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
               (.right (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))))
           0 (Eq.refl 0))) ?_
       refine .trans (.congr_instantiate_right [] _ (.prod_left _ _) 0 (Eq.refl 0)) (.of_eq ?_ _ _)
@@ -863,9 +863,9 @@ def Iso.prodCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : Lis
       refine .trans (.of_eq (instantiate_incrementBVars_assoc _ _ _ 0) _
         ((right.sati.incrementBVars [right₂] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
           (.right (.prod
-            ((left.sath.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+            ((left.sath.incrementBVars [left₁] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
               (.left (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))
-            ((right.sath.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+            ((right.sath.incrementBVars [right₁] (.prod left₁ right₁) 1 (Eq.refl 1)).instantiate []
               (.right (.bvar 0 (.prod left₁ right₁) (Option.mem_some_self _))) 0 (Eq.refl 0))))
           0 (Eq.refl 0))) ?_
       refine .trans (.congr_instantiate_right [] _ (.prod_right _ _) 0 (Eq.refl 0)) (.of_eq ?_ _ _)
@@ -878,9 +878,9 @@ def Iso.prodCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : Lis
       refine .trans (.of_eq (instantiate_incrementBVars_assoc _ _ _ 0) _
         ((left.sath.incrementBVars [left₁] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
           (.left (.prod
-            ((left.sati.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+            ((left.sati.incrementBVars [left₂] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
               (.left (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))
-            ((right.sati.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+            ((right.sati.incrementBVars [right₂] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
               (.right (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))))
           0 (Eq.refl 0))) ?_
       refine .trans (.congr_instantiate_right [] _ (.prod_left _ _) 0 (Eq.refl 0)) (.of_eq ?_ _ _)
@@ -891,9 +891,9 @@ def Iso.prodCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : Lis
       refine .trans (.of_eq (instantiate_incrementBVars_assoc _ _ _ 0) _
         ((right.sath.incrementBVars [right₁] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
           (.right (.prod
-            ((left.sati.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+            ((left.sati.incrementBVars [left₂] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
               (.left (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))
-            ((right.sati.incrementBVars [_] _ 1 (Eq.refl 1)).instantiate []
+            ((right.sati.incrementBVars [right₂] (.prod left₂ right₂) 1 (Eq.refl 1)).instantiate []
               (.right (.bvar 0 (.prod left₂ right₂) (Option.mem_some_self _))) 0 (Eq.refl 0))))
           0 (Eq.refl 0))) ?_
       refine .trans (.congr_instantiate_right [] _ (.prod_right _ _) 0 (Eq.refl 0)) (.of_eq ?_ _ _)
