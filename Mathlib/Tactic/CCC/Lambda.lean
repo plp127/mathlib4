@@ -720,13 +720,13 @@ def Object₀.elimHom {ι : Type u} (o : Object₀ ι) : Objectq ι :=
   match o with
   | .of i => .of i
   | .prod left right => .prod left.elimHom right.elimHom
-  | .hom source target => coHom source target source.elimHom
+  | .hom source target => coHom source.elimHom target
 where
-  coHom {ι : Type u} (source target : Object₀ ι) (kk : Objectq ι) : Objectq ι :=
+  coHom {ι : Type u} (source : Objectq ι) (target : Object₀ ι) : Objectq ι :=
     match target with
-    | .of i => .hom kk i
-    | .prod left right => .prod (coHom source left kk) (coHom source right kk)
-    | .hom source' target => coHom (.prod source source') target (.prod kk source'.elimHom)
+    | .of i => .hom source i
+    | .prod left right => .prod (coHom source left) (coHom source right)
+    | .hom source' target => coHom (.prod source source'.elimHom) target
 
 def Objectq.elimProd {ι : Type u} (o : Objectq ι) : List (Objectu ι) :=
   match o with
@@ -899,6 +899,137 @@ def Iso.prodCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : Lis
       refine .trans (.congr_instantiate_right [] _ (.prod_right _ _) 0 (Eq.refl 0)) (.of_eq ?_ _ _)
       simp only [instantiate_incrementBVars_assoc]
 
+def Iso.homCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {source₁ target₁ source₂ target₂ : Object ι}
+    (source : Iso ζ ctx source₁ source₂) (target : Iso ζ ctx target₁ target₂) :
+    Iso ζ ctx (.hom source₁ target₁) (.hom source₂ target₂) where
+  hom := .lam source₂ ((((target.hom.incrementBVars 1).incrementBVars 1).instantiate 0
+    (.app (.bvar 1) (source.inv.incrementBVars 1))))
+  inv := .lam source₁ ((((target.inv.incrementBVars 1).incrementBVars 1).instantiate 0
+    (.app (.bvar 1) (source.hom.incrementBVars 1))))
+  sath := .lam (((target.sath.incrementBVars [target₁] (.hom source₁ target₁)
+    1 (Eq.refl 1)).incrementBVars [target₁] source₂ 1 (Eq.refl 1)).instantiate []
+      (.app (.bvar 1 (.hom source₁ target₁) (Option.mem_some_self _))
+        (source.sati.incrementBVars [source₂] (.hom source₁ target₁) 1 (Eq.refl 1))) 0 (Eq.refl 0))
+  sati := .lam (((target.sati.incrementBVars [target₂] (.hom source₂ target₂)
+    1 (Eq.refl 1)).incrementBVars [target₂] source₁ 1 (Eq.refl 1)).instantiate []
+      (.app (.bvar 1 (.hom source₂ target₂) (Option.mem_some_self _))
+        (source.sath.incrementBVars [source₁] (.hom source₂ target₂) 1 (Eq.refl 1))) 0 (Eq.refl 0))
+  left_inv := by
+    refine .trans (.congr_lam ?_) (.symm (.lam_eta _))
+    refine .trans (.of_eq (?eq : _ = ?_) _ ?_) ?_
+    case eq =>
+      rw [incrementBVars_instantiate_of_le _ _ (Nat.zero_le 2),
+        instantiate_instantiate_of_le _ _ _ (Nat.zero_le 1),
+        ← incrementBVars_incrementBVars_of_ge _ (Nat.one_le_of_lt Nat.two_pos),
+        ← incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
+        incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1), instantiate_incrementBVars]
+      exact rfl
+    · exact ((target.sati.incrementBVars [target₂] (.hom source₁ target₁)
+          1 (Eq.refl 1)).incrementBVars [target₂] source₁ 1 (Eq.refl 1)).instantiate []
+        (.instantiate [source₁]
+          (.incrementBVars [source₁, (.hom source₂ target₂)] (.hom source₁ target₁)
+            (.app (.bvar 1 (.hom source₂ target₂) (Option.mem_some_self _))
+              (source.sath.incrementBVars [source₁] (.hom source₂ target₂) 1 (Eq.refl 1)))
+            2 (Eq.refl 2))
+          (.incrementBVars [] source₁ (.lam
+            (((target.sath.incrementBVars [target₁] (.hom source₁ target₁)
+                1 (Eq.refl 1)).incrementBVars [target₁] source₂ 1 (Eq.refl 1)).instantiate []
+              (.app (.bvar 1 (.hom source₁ target₁) (Option.mem_some_self _))
+                (source.sati.incrementBVars [source₂] (.hom source₁ target₁) 1 (Eq.refl 1)))
+              0 (Eq.refl 0))) 0 (Eq.refl 0)) 1 (Eq.refl 1)) 0 (Eq.refl 0)
+    refine .trans (.congr_instantiate_right [] _ (.beta _ _) 0 (Eq.refl 0)) ?_
+    refine .trans (.of_eq (?eq : _ = ?_) _ ?_) ?_
+    case eq =>
+      rw [instantiate_incrementBVars_assoc, ← incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
+        instantiate_incrementBVars, LambdaTerm.incrementBVars, LambdaTerm.incrementBVars,
+        if_pos (Nat.le_refl 1), LambdaTerm.instantiate, LambdaTerm.instantiate,
+        if_neg (Nat.add_one_ne_zero 1), if_pos (Nat.lt_add_one_of_le (Nat.zero_le 1)),
+        incrementBVars_incrementBVars_of_ge source.inv (Nat.le_refl 1),
+        ← incrementBVars_instantiate_of_le _ _ (Nat.zero_le 1)]
+      exact rfl
+    · exact ((target.sati.incrementBVars [target₂] (.hom source₁ target₁)
+        1 (Eq.refl 1)).incrementBVars [target₂] source₁ 1 (Eq.refl 1)).instantiate []
+          (((target.sath.incrementBVars [target₁] (.hom source₁ target₁)
+            1 (Eq.refl 1)).incrementBVars [target₁] source₁ 1 (Eq.refl 1)).instantiate []
+              (.app (.bvar 1 (.hom source₁ target₁) (Option.mem_some_self _))
+                (((source.sati.incrementBVars [source₂] source₁ 1 (Eq.refl 1)).instantiate []
+                  source.sath 0 (Eq.refl 0)).incrementBVars [source₁] (.hom source₁ target₁)
+                    1 (Eq.refl 1))) 0 (Eq.refl 0)) 0 (Eq.refl 0)
+    refine .trans (.congr_instantiate_right [] _ (.congr_instantiate_right [] _
+      (.congr_app (.refl _) (.congr_incrementBVars [source₁] source.left_inv
+        1 (Eq.refl 1))) 0 (Eq.refl 0)) 0 (Eq.refl 0)) ?_
+    refine .trans (.of_eq (?eq : _ = ?_) _ ?_) ?_
+    case eq =>
+      rw [← instantiate_incrementBVars_assoc, incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
+        ← incrementBVars_instantiate_of_le _ _ (Nat.zero_le 1)]
+      exact rfl
+    · exact ((((target.sati.incrementBVars [target₂] target₁ 1 (Eq.refl 1)).instantiate []
+        target.sath 0 (Eq.refl 0)).incrementBVars [target₁] (.hom source₁ target₁)
+          1 (Eq.refl 1)).incrementBVars [target₁] source₁ 1 (Eq.refl 1)).instantiate []
+            (.app (.bvar 1 (.hom source₁ target₁) (Option.mem_some_self _))
+              (.bvar 0 source₁ (Option.mem_some_self source₁))) 0 (Eq.refl 0)
+    exact (.congr_instantiate_left [] _ (.congr_incrementBVars [target₁]
+      (.congr_incrementBVars [target₁] target.left_inv 1 (Eq.refl 1))
+        1 (Eq.refl 1)) 0 (Eq.refl 0))
+  right_inv := by
+    refine .trans (.congr_lam ?_) (.symm (.lam_eta _))
+    refine .trans (.of_eq (?eq : _ = ?_) _ ?_) ?_
+    case eq =>
+      rw [incrementBVars_instantiate_of_le _ _ (Nat.zero_le 2),
+        instantiate_instantiate_of_le _ _ _ (Nat.zero_le 1),
+        ← incrementBVars_incrementBVars_of_ge _ (Nat.one_le_of_lt Nat.two_pos),
+        ← incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
+        incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1), instantiate_incrementBVars]
+      exact rfl
+    · exact ((target.sath.incrementBVars [target₁] (.hom source₂ target₂)
+          1 (Eq.refl 1)).incrementBVars [target₁] source₂ 1 (Eq.refl 1)).instantiate []
+        (.instantiate [source₂]
+          (.incrementBVars [source₂, (.hom source₁ target₁)] (.hom source₂ target₂)
+            (.app (.bvar 1 (.hom source₁ target₁) (Option.mem_some_self _))
+              (source.sati.incrementBVars [source₂] (.hom source₁ target₁) 1 (Eq.refl 1)))
+            2 (Eq.refl 2))
+          (.incrementBVars [] source₂ (.lam
+            (((target.sati.incrementBVars [target₂] (.hom source₂ target₂)
+                1 (Eq.refl 1)).incrementBVars [target₂] source₁ 1 (Eq.refl 1)).instantiate []
+              (.app (.bvar 1 (.hom source₂ target₂) (Option.mem_some_self _))
+                (source.sath.incrementBVars [source₁] (.hom source₂ target₂) 1 (Eq.refl 1)))
+              0 (Eq.refl 0))) 0 (Eq.refl 0)) 1 (Eq.refl 1)) 0 (Eq.refl 0)
+    refine .trans (.congr_instantiate_right [] _ (.beta _ _) 0 (Eq.refl 0)) ?_
+    refine .trans (.of_eq (?eq : _ = ?_) _ ?_) ?_
+    case eq =>
+      rw [instantiate_incrementBVars_assoc, ← incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
+        instantiate_incrementBVars, LambdaTerm.incrementBVars, LambdaTerm.incrementBVars,
+        if_pos (Nat.le_refl 1), LambdaTerm.instantiate, LambdaTerm.instantiate,
+        if_neg (Nat.add_one_ne_zero 1), if_pos (Nat.lt_add_one_of_le (Nat.zero_le 1)),
+        incrementBVars_incrementBVars_of_ge source.hom (Nat.le_refl 1),
+        ← incrementBVars_instantiate_of_le _ _ (Nat.zero_le 1)]
+      exact rfl
+    · exact ((target.sath.incrementBVars [target₁] (.hom source₂ target₂)
+        1 (Eq.refl 1)).incrementBVars [target₁] source₂ 1 (Eq.refl 1)).instantiate []
+          (((target.sati.incrementBVars [target₂] (.hom source₂ target₂)
+            1 (Eq.refl 1)).incrementBVars [target₂] source₂ 1 (Eq.refl 1)).instantiate []
+              (.app (.bvar 1 (.hom source₂ target₂) (Option.mem_some_self _))
+                (((source.sath.incrementBVars [source₁] source₂ 1 (Eq.refl 1)).instantiate []
+                  source.sati 0 (Eq.refl 0)).incrementBVars [source₂] (.hom source₂ target₂)
+                    1 (Eq.refl 1))) 0 (Eq.refl 0)) 0 (Eq.refl 0)
+    refine .trans (.congr_instantiate_right [] _ (.congr_instantiate_right [] _
+      (.congr_app (.refl _) (.congr_incrementBVars [source₂] source.right_inv
+        1 (Eq.refl 1))) 0 (Eq.refl 0)) 0 (Eq.refl 0)) ?_
+    refine .trans (.of_eq (?eq : _ = ?_) _ ?_) ?_
+    case eq =>
+      rw [← instantiate_incrementBVars_assoc, incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
+        ← incrementBVars_instantiate_of_le _ _ (Nat.zero_le 1)]
+      exact rfl
+    · exact ((((target.sath.incrementBVars [target₁] target₂ 1 (Eq.refl 1)).instantiate []
+        target.sati 0 (Eq.refl 0)).incrementBVars [target₂] (.hom source₂ target₂)
+          1 (Eq.refl 1)).incrementBVars [target₂] source₂ 1 (Eq.refl 1)).instantiate []
+            (.app (.bvar 1 (.hom source₂ target₂) (Option.mem_some_self _))
+              (.bvar 0 source₂ (Option.mem_some_self source₂))) 0 (Eq.refl 0)
+    exact (.congr_instantiate_left [] _ (.congr_incrementBVars [target₂]
+      (.congr_incrementBVars [target₂] target.right_inv 1 (Eq.refl 1))
+        1 (Eq.refl 1)) 0 (Eq.refl 0))
+
 def Iso.elimUnit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (o : Object ι) : Iso ζ ctx o (o.elimUnit.elim Object.unit Object₀.toObject) :=
   match o with
@@ -911,11 +1042,21 @@ def Iso.elimUnit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List
       (fun ihl => .trans (.prodCongr ihl (.elimUnit ζ ctx right)) (.unitProd ζ ctx _))
       (fun u ihl =>
         Option.rec (motive := fun v => Iso ζ ctx right (v.elim Object.unit Object₀.toObject) →
-            Iso ζ ctx (.prod left right) (Object₀.toObject (v.elim u (.prod u))))
+            Iso ζ ctx (.prod left right) (v.elim u (.prod u)).toObject)
           (fun ihr => .trans (.prodCongr ihl ihr) (.prodUnit ζ ctx u.toObject))
           (fun _ ihr => .prodCongr ihl ihr) right.elimUnit (.elimUnit ζ ctx right))
       left.elimUnit (.elimUnit ζ ctx left)
-  | .hom source target => sorry
+  | .hom source target =>
+    Option.rec (motive := fun u => Iso ζ ctx target (u.elim Object.unit Object₀.toObject) →
+        Iso ζ ctx (.hom source target) (((u.map fun i => source.elimUnit.elim i fun k =>
+          Object₀.hom k i)).elim Object.unit Object₀.toObject))
+    (fun iht => .trans (.homCongr (.refl ζ ctx source) iht) (.homUnit ζ ctx source))
+    (fun u iht =>
+      Option.rec (motive := fun v => Iso ζ ctx source (v.elim Object.unit Object₀.toObject) →
+          Iso ζ ctx (.hom source target) (v.elim u fun k => .hom k u).toObject)
+        (fun ihs => .trans (.homCongr ihs iht) (.unitHom ζ ctx u.toObject))
+        (fun _ ihs => .homCongr ihs iht) source.elimUnit (.elimUnit ζ ctx source))
+    target.elimUnit (.elimUnit ζ ctx target)
 
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι Empty × List κ :=
@@ -940,12 +1081,6 @@ def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks :
     letI c := tup.abstract ks n
     (.right c.1, c.2)
   | .bvar deBruijnIndex => (.bvar deBruijnIndex, ks)
-
-def LambdaTerm.lams {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
-    (ks : List (Object ι)) : LambdaTerm ι κ :=
-  match ks with
-  | [] => t
-  | k :: ks => .lam k (t.lams ks)
 
 inductive Morphism {ι : Type u} {κ : Type v} (s t : κ → Object ι) :
     (source target : Object ι) → Type (max u v) where
