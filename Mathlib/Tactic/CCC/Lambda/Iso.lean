@@ -40,11 +40,6 @@ def Objectu.toObject₀ {ι : Type u} (o : Objectu ι) : Object₀ ι :=
   | .of i => .of i
   | .hom source target => .hom source.toObject₀ target.toObject₀
 
-def Objectu.homs {ι : Type u} (sources : List (Objectu ι)) (target : Objectu ι) : Objectu ι :=
-  match sources with
-  | [] => target
-  | source :: sources => .hom source (.homs sources target)
-
 def Object.elimUnit {ι : Type u} (o : Object ι) : Option (Object₀ ι) :=
   match o with
   | .of i => some (.of i)
@@ -70,7 +65,7 @@ def Objectq.elimProd {ι : Type u} (o : Objectq ι) : List (Objectu ι) :=
   match o with
   | .of i => [.of i]
   | .prod left right => left.elimProd ++ right.elimProd
-  | .hom source target => [.homs source.elimProd (.of target)]
+  | .hom source target => [source.elimProd.foldr .hom (.of target)]
 
 structure Iso {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (source target : Object ι) where
