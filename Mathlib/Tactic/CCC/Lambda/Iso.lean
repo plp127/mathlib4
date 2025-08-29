@@ -423,6 +423,21 @@ def Iso.homProd {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List 
         (.prod_right _ _))) (.symm (.lam_eta _))))
     (.symm (.prod_eta _))
 
+def Iso.curry {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (s₁ s₂ t : Object ι) : Iso ζ ctx (.hom (.prod s₁ s₂) t) (.hom s₁ (.hom s₂ t)) where
+  hom := .lam s₁ (.lam s₂ (.app (.bvar 2) (.prod (.bvar 1) (.bvar 0))))
+  inv := .lam (.prod s₁ s₂) (.app (.app (.bvar 1) (.left (.bvar 0))) (.right (.bvar 0)))
+  sath := .lam (.lam (.app (.bvar 2 (.hom (.prod s₁ s₂) t) (Option.mem_some_self _))
+    (.prod (.bvar 1 s₁ (Option.mem_some_self s₁)) (.bvar 0 s₂ (Option.mem_some_self s₂)))))
+  sati := .lam (.app (.app (.bvar 1 (.hom s₁ (.hom s₂ t)) (Option.mem_some_self _))
+    (.left (.bvar 0 (.prod s₁ s₂) (Option.mem_some_self _))))
+    (.right (.bvar 0 (.prod s₁ s₂) (Option.mem_some_self _))))
+  left_inv := .trans (.congr_lam (.trans (.congr_app (.beta _ _) (.refl _))
+    (.trans (.beta _ _) (.congr_app (.refl _) (.symm (.prod_eta _)))))) (.symm (.lam_eta _))
+  right_inv := .trans (.congr_lam (.trans (.congr_lam
+    (.trans (.beta _ _) (.congr_app (.congr_app (.refl _) (.prod_left _ _)) (.prod_right _ _))))
+      (.symm (.lam_eta _)))) (.symm (.lam_eta _))
+
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι Empty × List κ :=
   match t with
