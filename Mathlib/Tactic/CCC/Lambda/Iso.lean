@@ -438,6 +438,25 @@ def Iso.curry {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (O
     (.trans (.beta _ _) (.congr_app (.congr_app (.refl _) (.prod_left _ _)) (.prod_right _ _))))
       (.symm (.lam_eta _)))) (.symm (.lam_eta _))
 
+def Iso.elimHom {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (o : Object₀ ι) : Iso ζ ctx o.toObject o.elimHom.toObject₀.toObject :=
+  match o with
+  | .of i => .refl ζ ctx (.of i)
+  | .prod left right => .prodCongr (.elimHom ζ ctx left) (.elimHom ζ ctx right)
+  | .hom source target => coHom (.elimHom ζ ctx source) target
+where
+  coHom {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
+    {source : Object₀ ι} (ihs : Iso ζ ctx source.toObject source.elimHom.toObject₀.toObject)
+    (target : Object₀ ι) : Iso ζ ctx (Object₀.hom source target).toObject
+      (Object₀.elimHom.coHom source.elimHom target).toObject₀.toObject :=
+    match target with
+    | .of i => .homCongr ihs (.refl ζ ctx (.of i))
+    | .prod left right => .trans (.homProd ζ ctx source.toObject left.toObject right.toObject)
+      (.prodCongr (coHom ihs left) (coHom ihs right))
+    | .hom source' target => .trans (.symm
+        (.curry ζ ctx source.toObject source'.toObject target.toObject))
+      (@coHom ι κ ζ ctx (.prod source source') (.prodCongr ihs (elimHom ζ ctx source')) target)
+
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι Empty × List κ :=
   match t with
