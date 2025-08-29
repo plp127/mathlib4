@@ -396,6 +396,33 @@ def Iso.elimUnit {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List
         (fun _ ihs => .homCongr ihs iht) source.elimUnit (.elimUnit ζ ctx source))
     target.elimUnit (.elimUnit ζ ctx target)
 
+def Iso.homProd {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (s t₁ t₂ : Object ι) : Iso ζ ctx (.hom s (.prod t₁ t₂)) (.prod (.hom s t₁) (.hom s t₂)) where
+  hom := .prod
+    (.lam s (.left (.app (.bvar 1) (.bvar 0))))
+    (.lam s (.right (.app (.bvar 1) (.bvar 0))))
+  inv := .lam s (.prod (.app (.left (.bvar 1)) (.bvar 0)) (.app (.right (.bvar 1)) (.bvar 0)))
+  sath := .prod
+    (.lam (.left (.app (.bvar 1 (.hom s (.prod t₁ t₂)) (Option.mem_some_self _))
+      (.bvar 0 s (Option.mem_some_self s)))))
+    (.lam (.right (.app (.bvar 1 (.hom s (.prod t₁ t₂)) (Option.mem_some_self _))
+      (.bvar 0 s (Option.mem_some_self s)))))
+  sati := .lam (.prod
+    (.app (.left (.bvar 1 (.prod (.hom s t₁) (.hom s t₂)) (Option.mem_some_self _)))
+      (.bvar 0 s (Option.mem_some_self s)))
+    (.app (.right (.bvar 1 (.prod (.hom s t₁) (.hom s t₂)) (Option.mem_some_self _)))
+      (.bvar 0 s (Option.mem_some_self s))))
+  left_inv := .trans (.congr_lam (.trans (.congr_prod
+      (.trans (.congr_app (.prod_left _ _) (.refl _)) (.beta _ _))
+      (.trans (.congr_app (.prod_right _ _) (.refl _)) (.beta _ _)))
+    (.symm (.prod_eta _)))) (.symm (.lam_eta _))
+  right_inv := .trans (.congr_prod
+      (.trans (.congr_lam (.trans (.congr_left (.beta _ _))
+        (.prod_left _ _))) (.symm (.lam_eta _)))
+      (.trans (.congr_lam (.trans (.congr_right (.beta _ _))
+        (.prod_right _ _))) (.symm (.lam_eta _))))
+    (.symm (.prod_eta _))
+
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι Empty × List κ :=
   match t with
