@@ -500,6 +500,14 @@ def Iso.elimProd {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List
           (.homCongr (.refl ζ ctx o.toObject₀.toObject) ih)) source.elimProd)
       (.symm (.prodUnit ζ ctx (source.elimProd.foldr Objectu.hom (.of target)).toObject₀.toObject)))
 
+def Iso.elimAll {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (o : Object ι) : Iso ζ ctx o (Objectu.prodsObject o.elimAll) :=
+  Option.rec (motive := fun u =>
+      Iso ζ ctx o (u.elim .unit Object₀.toObject) →
+        Iso ζ ctx o (Objectu.prodsObject (u.elim [] fun v => v.elimHom.elimProd)))
+    (fun ih => ih) (fun u ih => .trans ih (.trans (.elimHom ζ ctx u) (.elimProd ζ ctx u.elimHom)))
+    o.elimUnit (.elimUnit ζ ctx o)
+
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι Empty × List κ :=
   match t with
