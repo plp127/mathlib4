@@ -67,6 +67,12 @@ def Objectq.elimProd {ι : Type u} (o : Objectq ι) : List (Objectu ι) :=
   | .prod left right => left.elimProd ++ right.elimProd
   | .hom source target => [source.elimProd.foldr .hom (.of target)]
 
+def Object.elimAll {ι : Type u} (o : Object ι) : List (Objectu ι) :=
+  o.elimUnit.elim [] fun u => u.elimHom.elimProd
+
+def Objectu.prodsObject {ι : Type u} (o : List (Objectu ι)) : Object ι :=
+  o.foldr (fun u => .prod u.toObject₀.toObject) .unit
+
 structure Iso {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
     (source target : Object ι) where
   hom : LambdaTerm ι κ
@@ -451,6 +457,48 @@ where
     | .hom source' target => .trans (.symm
         (.curry ζ ctx source.toObject source'.toObject target.toObject))
       (@coHom ι κ ζ ctx (.prod source source') (.prodCongr ihs (elimHom ζ ctx source')) target)
+
+def Iso.prodAssoc {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (t₁ t₂ t₃ : Object ι) : Iso ζ ctx (.prod (.prod t₁ t₂) t₃) (.prod t₁ (.prod t₂ t₃)) where
+  hom := .prod (.left (.left (.bvar 0))) (.prod (.right (.left (.bvar 0))) (.right (.bvar 0)))
+  inv := .prod (.prod (.left (.bvar 0)) (.left (.right (.bvar 0)))) (.right (.right (.bvar 0)))
+  sath := .prod (.left (.left (.bvar 0 (.prod (.prod t₁ t₂) t₃) (Option.mem_some_self _)))) (.prod
+    (.right (.left (.bvar 0 (.prod (.prod t₁ t₂) t₃) (Option.mem_some_self _))))
+    (.right (.bvar 0 (.prod (.prod t₁ t₂) t₃) (Option.mem_some_self _))))
+  sati := .prod (.prod (.left (.bvar 0 (.prod t₁ (.prod t₂ t₃)) (Option.mem_some_self _)))
+    (.left (.right (.bvar 0 (.prod t₁ (.prod t₂ t₃)) (Option.mem_some_self _)))))
+    (.right (.right (.bvar 0 (.prod t₁ (.prod t₂ t₃)) (Option.mem_some_self _))))
+  left_inv := .trans (.congr_prod (.trans (.congr_prod (.prod_left _ _)
+    (.trans (.congr_left (.prod_right _ _)) (.prod_left _ _))) (.symm (.prod_eta _)))
+      (.trans (.congr_right (.prod_right _ _)) (.prod_right _ _))) (.symm (.prod_eta _))
+  right_inv := .trans (.congr_prod (.trans (.congr_left (.prod_left _ _)) (.prod_left _ _))
+    (.trans (.congr_prod (.trans (.congr_right (.prod_left _ _)) (.prod_right _ _))
+      (.prod_right _ _)) (.symm (.prod_eta _)))) (.symm (.prod_eta _))
+
+def Iso.prodsObjectAppend {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (o₁ o₂ : List (Objectu ι)) : Iso ζ ctx (Objectu.prodsObject (o₁ ++ o₂))
+    (.prod (Objectu.prodsObject o₁) (Objectu.prodsObject o₂)) :=
+  match o₁ with
+  | [] => .symm (.unitProd ζ ctx (Objectu.prodsObject o₂))
+  | o :: os => .trans (.prodCongr (.refl ζ ctx o.toObject₀.toObject)
+    (.prodsObjectAppend ζ ctx os o₂)) (.symm (.prodAssoc ζ ctx o.toObject₀.toObject
+      (Objectu.prodsObject os) (Objectu.prodsObject o₂)))
+
+def Iso.elimProd {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List (Object ι))
+    (o : Objectq ι) : Iso ζ ctx o.toObject₀.toObject (Objectu.prodsObject o.elimProd) :=
+  match o with
+  | .of i => .symm (.prodUnit ζ ctx (.of i))
+  | .prod left right => .trans (.prodCongr (.elimProd ζ ctx left) (.elimProd ζ ctx right))
+    (.symm (.prodsObjectAppend ζ ctx left.elimProd right.elimProd))
+  | .hom source target => .trans (.homCongr (.elimProd ζ ctx source) (.refl ζ ctx (.of target)))
+    (.trans (List.rec (motive := fun os =>
+          Iso ζ ctx (.hom (Objectu.prodsObject os) (.of target))
+            (os.foldr Objectu.hom (.of target)).toObject₀.toObject)
+        (.unitHom ζ ctx (.of target))
+        (fun o os ih => .trans
+          (.curry ζ ctx o.toObject₀.toObject (Objectu.prodsObject os) (.of target))
+          (.homCongr (.refl ζ ctx o.toObject₀.toObject) ih)) source.elimProd)
+      (.symm (.prodUnit ζ ctx (source.elimProd.foldr Objectu.hom (.of target)).toObject₀.toObject)))
 
 def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
     LambdaTerm ι Empty × List κ :=
