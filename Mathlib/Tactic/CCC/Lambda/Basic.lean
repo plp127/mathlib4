@@ -242,6 +242,34 @@ def Typing.instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app 
         (fun hl => .bvar _ _ (by grind))
         (fun hl => .bvar _ _ (by grind)))
 
+@[simp]
+def Typing.extend {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx : List (Object ι)} (ex : List (Object ι)) {t : LambdaTerm ι κ} {tt : Object ι}
+    (satt : Typing ζ ctx t tt) : Typing ζ (ctx ++ ex) t tt :=
+  match satt with
+  | .of k ctx => .of k (ctx ++ ex)
+  | .unit ctx => .unit (ctx ++ ex)
+  | .prod satl satr => .prod (satl.extend ex) (satr.extend ex)
+  | .lam sat => .lam (sat.extend ex)
+  | .app satd sata => .app (satd.extend ex) (sata.extend ex)
+  | .left sat => .left (sat.extend ex)
+  | .right sat => .right (sat.extend ex)
+  | .bvar deBruijnIndex type sat => .bvar deBruijnIndex type (by grind)
+
+@[simp]
+def Typing.cast {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx₁ ctx₂ : List (Object ι)} (eq : ctx₁ = ctx₂) {t : LambdaTerm ι κ} {tt : Object ι}
+    (satt : Typing ζ ctx₁ t tt) : Typing ζ ctx₂ t tt :=
+  match satt with
+  | .of k ctx => .of k ctx₂
+  | .unit ctx => .unit ctx₂
+  | .prod satl satr => .prod (satl.cast eq) (satr.cast eq)
+  | .lam sat => .lam (sat.cast (congrArg (List.cons _) eq))
+  | .app satd sata => .app (satd.cast eq) (sata.cast eq)
+  | .left sat => .left (sat.cast eq)
+  | .right sat => .right (sat.cast eq)
+  | .bvar deBruijnIndex type sat => .bvar deBruijnIndex type (by grind)
+
 inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
     {ctx : List (Object ι)} → {t₁ t₂ : LambdaTerm ι κ} → {typ : Object ι} →
     (sat₁ : Typing ζ ctx t₁ typ) → (sat₂ : Typing ζ ctx t₂ typ) → Prop where
