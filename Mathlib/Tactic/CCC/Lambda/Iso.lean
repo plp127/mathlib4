@@ -508,30 +508,6 @@ def Iso.elimAll {ι : Type u} {κ : Type v} (ζ : κ → Object ι) (ctx : List 
     (fun ih => ih) (fun u ih => .trans ih (.trans (.elimHom ζ ctx u) (.elimProd ζ ctx u.elimHom)))
     o.elimUnit (.elimUnit ζ ctx o)
 
-def LambdaTerm.abstract {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) (ks : List κ) (n : Nat) :
-    LambdaTerm ι Empty × List κ :=
-  match t with
-  | .of k => (.bvar (ks.length + n), k :: ks)
-  | .unit => (.unit, ks)
-  | .prod l r =>
-    letI c := l.abstract ks n
-    letI d := r.abstract c.2 n
-    (.prod c.1 d.1, d.2)
-  | .lam dom body =>
-    letI c := body.abstract ks (n + 1)
-    (.lam dom c.1, c.2)
-  | .app fn arg =>
-    letI c := fn.abstract ks n
-    letI d := arg.abstract c.2 n
-    (.app c.1 d.1, d.2)
-  | .left tup =>
-    letI c := tup.abstract ks n
-    (.left c.1, c.2)
-  | .right tup =>
-    letI c := tup.abstract ks n
-    (.right c.1, c.2)
-  | .bvar deBruijnIndex => (.bvar deBruijnIndex, ks)
-
 inductive Morphism {ι : Type u} {κ : Type v} (s t : κ → Object ι) :
     (source target : Object ι) → Type (max u v) where
   | of (k : κ) : Morphism s t (s k) (t k)

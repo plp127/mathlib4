@@ -7,7 +7,7 @@ import Mathlib.CategoryTheory.Closed.Cartesian
 import Mathlib.Data.Prod.TProd
 import Mathlib.Tactic.DepRewrite
 
-universe u v w
+universe u v w r
 
 def List.TProd.get {ι : Type u} {α : ι → Type v} {l : List ι}
     (t : l.TProd α) (n : Nat) (i : ι) (hi : i ∈ l[n]?) : α i :=
@@ -243,6 +243,33 @@ def Typing.instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app 
         (fun hl => .bvar _ _ (by grind)))
 
 @[simp]
+def LambdaTerm.replaceFVars {ι : Type u} {κ : Type v} {σ : Type w}
+    (m : κ → LambdaTerm ι σ) (t : LambdaTerm ι κ) : LambdaTerm ι σ :=
+  match t with
+  | .of k => m k
+  | .unit => .unit
+  | .prod l r => .prod (l.replaceFVars m) (r.replaceFVars m)
+  | .lam dom body => .lam dom (body.replaceFVars (fun k => (m k).incrementBVars 0))
+  | .app fn arg => .app (fn.replaceFVars m) (arg.replaceFVars m)
+  | .left tup => .left (tup.replaceFVars m)
+  | .right tup => .right (tup.replaceFVars m)
+  | .bvar deBruijnIndex => .bvar deBruijnIndex
+
+def Typing.replaceFVars {ι : Type u} {κ : Type v} {σ : Type w} {ζ : κ → Object ι} (η : σ → Object ι)
+    {m : κ → LambdaTerm ι σ} {ctx : List (Object ι)} {t : LambdaTerm ι κ}
+    {tt : Object ι} (tm : (k : κ) → Typing η ctx (m k) (ζ k)) (satt : Typing ζ ctx t tt) :
+    Typing η ctx (t.replaceFVars m) tt :=
+  match satt with
+  | .of k ctx => tm k
+  | .unit ctx => .unit ctx
+  | .prod satl satr => .prod (satl.replaceFVars η tm) (satr.replaceFVars η tm)
+  | .lam sat => .lam (sat.replaceFVars η fun k => (tm k).incrementBVars [] _ 0 (Eq.refl 0))
+  | .app satd sata => .app (satd.replaceFVars η tm) (sata.replaceFVars η tm)
+  | .left sat => .left (sat.replaceFVars η tm)
+  | .right sat => .right (sat.replaceFVars η tm)
+  | .bvar deBruijnIndex type sat => .bvar deBruijnIndex type sat
+
+@[simp]
 def Typing.extend {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx : List (Object ι)} (ex : List (Object ι)) {t : LambdaTerm ι κ} {tt : Object ι}
     (satt : Typing ζ ctx t tt) : Typing ζ (ctx ++ ex) t tt :=
@@ -433,6 +460,25 @@ theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object �
   | lam_eta sat =>
     exact funext fun x => congrFun (read_incrementBVars ri rk [] ci x sat 0 (Eq.refl 0)).symm x
   | beta satb sata => exact (read_instantiate ri rk [] satb sata 0 (Eq.refl 0)).symm
+
+theorem read_replaceFVars {ι : Type u} {κ : Type v} {σ : Type w}
+    {ζ : κ → Object ι} {η : σ → Object ι} (ri : ι → Type r) (m : κ → LambdaTerm ι σ)
+    (rs : (s : σ) → (η s).read ri) {ctx : List (Object ι)} (ci : ctx.TProd (Object.read ri))
+    (tm : (k : κ) → Typing η ctx (m k) (ζ k)) {t : LambdaTerm ι κ} {tt : Object ι}
+    (sat : Typing ζ ctx t tt) : (t.replaceFVars m).read ri rs ctx ci tt (sat.replaceFVars η tm) =
+      t.read ri (fun k => (m k).read ri rs ctx ci (ζ k) (tm k)) ctx ci tt sat := by
+  induction sat generalizing m with
+  | of _ _ => rfl
+  | unit _ => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ Prod.mk (ihl m ci tm) (ihr m ci tm)
+  | lam sat ih =>
+    exact funext fun i => (ih _ (i, ci) _).trans (congrArg
+      (LambdaTerm.read ri · (_ :: _) (i, ci) _ _ sat) (funext fun k =>
+        (read_incrementBVars ri rs [] ci i _ 0 (Eq.refl 0))))
+  | app _ _ ihd iha => exact congr (ihd m ci tm) (iha m ci tm)
+  | left _ ih => exact congrArg Prod.fst (ih m ci tm)
+  | right _ ih => exact congrArg Prod.snd (ih m ci tm)
+  | bvar _ _ _ => rfl
 
 theorem instantiate_incrementBVars {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
     (s : LambdaTerm ι κ) (n : ℕ) : (t.incrementBVars n).instantiate n s = t := by
