@@ -270,6 +270,11 @@ def Typing.replaceFVars {ι : Type u} {κ : Type v} {σ : Type w} {ζ : κ → O
   | .bvar deBruijnIndex type sat => .bvar deBruijnIndex type sat
 
 @[simp]
+theorem replaceFVars_of {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ) :
+    t.replaceFVars .of = t := by
+  induction t <;> simp_all
+
+@[simp]
 def Typing.extend {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx : List (Object ι)} (ex : List (Object ι)) {t : LambdaTerm ι κ} {tt : Object ι}
     (satt : Typing ζ ctx t tt) : Typing ζ (ctx ++ ex) t tt :=
