@@ -464,7 +464,7 @@ def RConv.congr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List 
   | .hom _ _ => fun ex a sata ra => (rc ex a sata ra).congr
     (.congr_app (.congr_extend ex conv) (.refl sata))
 
-def RConv.replaceBVarsPerm {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+def RConv.replaceBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx₁ ctx₂ : List (Object ι)} {subh subi : Nat → Nat} {tt : Object ι} {t : LambdaTerm ι κ}
     (sath : ∀ (n : Nat) (hn : n < ctx₁.length), ctx₁[n] ∈ ctx₂[subh n]?)
     (sati : ∀ (n : Nat) (hn : n < ctx₂.length), ctx₂[n] ∈ ctx₁[subi n]?)
@@ -477,7 +477,7 @@ def RConv.replaceBVarsPerm {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
       (rc.1.toLambdaTerm_replaceBVars _ _ fun _ _ => rfl).symm _ _)⟩
   | .unit => rc
   | .prod left right =>
-    (rc.1.replaceBVarsPerm sath sati ih hi, rc.2.replaceBVarsPerm sath sati ih hi)
+    (rc.1.replaceBVars sath sati ih hi, rc.2.replaceBVars sath sati ih hi)
   | .hom source target => fun ex a sata ra => by
     letI ubh (n : Nat) : Nat := if n < ctx₁.length then subh n else n - ctx₁.length + ctx₂.length
     letI ubi (n : Nat) : Nat := if n < ctx₂.length then subi n else n - ctx₂.length + ctx₁.length
@@ -514,7 +514,7 @@ def RConv.replaceBVarsPerm {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     refine .congr (.of_eq (congrArg₂ LambdaTerm.app ?_ (.trans ?_ (replaceBVars_bvar a))) _ _)
       ((rc ex (a.replaceBVars fun n => .bvar (ubi n))
         (sata.replaceBVars fun n hn => .bvar _ _ (ati n hn))
-        (ra.replaceBVarsPerm ati ath shi sih sata)).replaceBVarsPerm ath ati sih shi _)
+        (ra.replaceBVars ati ath shi sih sata)).replaceBVars ath ati sih shi _)
     · apply replaceBVars_congr_left_of_typing satt
       intro n hn
       unfold ubh
@@ -534,11 +534,11 @@ def RConv.extend {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List
   | .prod left right => (rc.1.extend ex, rc.2.extend ex)
   | .hom source target => fun ex' a sata ra =>
     .congr (.of_eq (.trans (replaceBVars_bvar _) (congrArg (.app t) (replaceBVars_bvar a))) _ _)
-      (@RConv.replaceBVarsPerm ι κ ζ (ctx ++ (ex ++ ex')) (ctx ++ ex ++ ex') id id
+      (@RConv.replaceBVars ι κ ζ (ctx ++ (ex ++ ex')) (ctx ++ ex ++ ex') id id
         target _ (by grind) (by grind) (fun _ _ => rfl) (fun _ _ => rfl) _
         (rc (ex ++ ex') (a.replaceBVars .bvar)
           (sata.replaceBVars fun n hn => .bvar n (ctx ++ ex ++ ex')[n] (by grind))
-          (ra.replaceBVarsPerm (by grind) (by grind) (fun _ _ => rfl) (fun _ _ => rfl))))
+          (ra.replaceBVars (by grind) (by grind) (fun _ _ => rfl) (fun _ _ => rfl))))
 
 def RConv.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (app : List (Object ι))
     {ctx : List (Object ι)} (tu : Object ι) {tt : Object ι} {t : LambdaTerm ι κ}
@@ -553,7 +553,7 @@ def RConv.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (ap
   | .hom source target => fun ex a sata ra =>
     sorry
 
-def RConv.replaceBVars {ι : Type u} {κ : Type v} [hκ : IsEmpty κ] {ζ : κ → Object ι}
+def RConv.replace {ι : Type u} {κ : Type v} [hκ : IsEmpty κ] {ζ : κ → Object ι}
     {ctx₁ ctx₂ : List (Object ι)} {sub : Nat → LambdaTerm ι κ} {tt : Object ι} {t : LambdaTerm ι κ}
     (sats : (n : Nat) → (hn : n < ctx₁.length) → Typing ζ ctx₂ (sub n) ctx₁[n])
     (satt : Typing ζ ctx₁ t tt) (rc : (n : Nat) → (hn : n < ctx₁.length) → RConv (sats n hn)) :
@@ -561,12 +561,12 @@ def RConv.replaceBVars {ι : Type u} {κ : Type v} [hκ : IsEmpty κ] {ζ : κ �
   match satt, hκ with
   | .unit _, _ => PUnit.unit
   | .prod satl satr, _ =>
-    (.congr (.symm (.prod_left _ _)) (.replaceBVars sats satl rc),
-      .congr (.symm (.prod_right _ _)) (.replaceBVars sats satr rc))
+    (.congr (.symm (.prod_left _ _)) (.replace sats satl rc),
+      .congr (.symm (.prod_right _ _)) (.replace sats satr rc))
   | .lam sat, _ => fun ex a sata ra => by
     refine .congr (.trans (.of_eq ?_ _ _)
         (.symm (.beta _ _)))
-      (@RConv.replaceBVars ι κ _ ζ (_ :: ctx₁) (ctx₂ ++ ex)
+      (@RConv.replace ι κ _ ζ (_ :: ctx₁) (ctx₂ ++ ex)
         (fun n => n.casesOn a fun u => sub u) _ _
         (fun n => n.casesOn (fun _ => sata) (fun u hu =>
           (sats u (Nat.lt_of_succ_lt_succ hu)).extend ex))
@@ -576,15 +576,15 @@ def RConv.replaceBVars {ι : Type u} {κ : Type v} [hκ : IsEmpty κ] {ζ : κ �
     refine congrArg (LambdaTerm.replaceBVars · _) (funext fun n => n.casesOn rfl fun u => ?_)
     simp
   | .app satd sata, _ =>
-    .congr (.of_eq (by simp) _ _) (@RConv.replaceBVarsPerm ι κ ζ (ctx₂ ++ []) ctx₂ id id
+    .congr (.of_eq (by simp) _ _) (@RConv.replaceBVars ι κ ζ (ctx₂ ++ []) ctx₂ id id
       tt _ (by grind) (by grind) (fun _ _ => rfl) (fun _ _ => rfl) _
-      (RConv.replaceBVars sats satd rc [] _
+      (RConv.replace sats satd rc [] _
         (sata.replaceBVars fun n hn =>
           (sats n hn).replaceBVars fun u hu => .bvar u ctx₂[u] (by simp))
-        ((RConv.replaceBVars _ sata (fun n hn => (rc n hn).replaceBVarsPerm
+        ((RConv.replace _ sata (fun n hn => (rc n hn).replaceBVars
           (by grind) (by grind) (fun _ _ => rfl) (fun _ _ => rfl) _)))))
-  | .left sat, _ => (RConv.replaceBVars sats sat rc).fst
-  | .right sat, _ => (RConv.replaceBVars sats sat rc).snd
+  | .left sat, _ => (RConv.replace sats sat rc).fst
+  | .right sat, _ => (RConv.replace sats sat rc).snd
   | .bvar deBruijnIndex type sat, _ =>
     Eq.rec (motive := fun _ h => RConv (h ▸ sats deBruijnIndex (by grind)))
       (rc deBruijnIndex (by grind)) (Option.mem_some.1 (List.getElem?_eq_getElem
@@ -601,7 +601,7 @@ def RConv.toNormal {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : Li
   | .prod _ _ => ⟨.prod rc.1.toNormal.1 rc.2.toNormal.1,
     .trans (.prod_eta satt) (.congr_prod rc.1.toNormal.2 rc.2.toNormal.2)⟩
   | .hom source target => ⟨.lam source
-    (@RConv.replaceBVarsPerm ι κ ζ (source :: ctx ++ []) (source :: ctx) id id
+    (@RConv.replaceBVars ι κ ζ (source :: ctx ++ []) (source :: ctx) id id
       target _ (by grind) (by grind) (fun _ _ => rfl) (fun _ _ => rfl) _
       (rc.incrementBVars [] source 0 (Eq.refl 0) [] (.bvar 0)
         (.bvar 0 source (Option.mem_some_self source))
