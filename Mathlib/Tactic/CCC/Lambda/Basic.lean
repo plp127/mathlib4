@@ -289,17 +289,17 @@ def Typing.extend {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
   | .bvar deBruijnIndex type sat => .bvar deBruijnIndex type (by grind)
 
 @[simp]
-def Typing.cast {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+def Typing.castList {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx₁ ctx₂ : List (Object ι)} (eq : ctx₁ = ctx₂) {t : LambdaTerm ι κ} {tt : Object ι}
     (satt : Typing ζ ctx₁ t tt) : Typing ζ ctx₂ t tt :=
   match satt with
   | .of k ctx => .of k ctx₂
   | .unit ctx => .unit ctx₂
-  | .prod satl satr => .prod (satl.cast eq) (satr.cast eq)
-  | .lam sat => .lam (sat.cast (congrArg (List.cons _) eq))
-  | .app satd sata => .app (satd.cast eq) (sata.cast eq)
-  | .left sat => .left (sat.cast eq)
-  | .right sat => .right (sat.cast eq)
+  | .prod satl satr => .prod (satl.castList eq) (satr.castList eq)
+  | .lam sat => .lam (sat.castList (congrArg (List.cons _) eq))
+  | .app satd sata => .app (satd.castList eq) (sata.castList eq)
+  | .left sat => .left (sat.castList eq)
+  | .right sat => .right (sat.castList eq)
   | .bvar deBruijnIndex type sat => .bvar deBruijnIndex type (by grind)
 
 inductive Convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι} :
@@ -485,6 +485,7 @@ theorem read_replaceFVars {ι : Type u} {κ : Type v} {σ : Type w}
   | right _ ih => exact congrArg Prod.snd (ih m ci tm)
   | bvar _ _ _ => rfl
 
+@[simp]
 theorem instantiate_incrementBVars {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
     (s : LambdaTerm ι κ) (n : ℕ) : (t.incrementBVars n).instantiate n s = t := by
   induction t generalizing n s with
@@ -749,5 +750,25 @@ nonrec theorem Convertible.instantiate_incrementBVars {ι : Type u} {κ : Type v
     (n : Nat) (hn : app.length = n) :
     Convertible (.instantiate app (.incrementBVars app ts satt n hn) sats n hn) satt :=
   .of_eq (instantiate_incrementBVars t s n) _ _
+
+theorem Convertible.congr_extend {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx : List (Object ι)} (ex : List (Object ι)) {t₁ t₂ : LambdaTerm ι κ} {tt : Object ι}
+    {satt₁ : Typing ζ ctx t₁ tt} {satt₂ : Typing ζ ctx t₂ tt} (conv : Convertible satt₁ satt₂) :
+    Convertible (satt₁.extend ex) (satt₂.extend ex) := by
+  induction conv with
+  | refl sat => exact .refl (sat.extend ex)
+  | symm _ ih => exact ih.symm
+  | trans _ _ ih₁ ih₂ => exact ih₁.trans ih₂
+  | congr_prod _ _ ihl ihr => exact .congr_prod ihl ihr
+  | congr_lam _ ih => exact .congr_lam ih
+  | congr_app _ _ ihf iha => exact .congr_app ihf iha
+  | congr_left _ ih => exact .congr_left ih
+  | congr_right _ ih => exact .congr_right ih
+  | unit_eta sat => exact .unit_eta (sat.extend ex)
+  | prod_eta sat => exact .prod_eta (sat.extend ex)
+  | prod_left satl satr => exact .prod_left (satl.extend ex) (satr.extend ex)
+  | prod_right satl satr => exact .prod_right (satl.extend ex) (satr.extend ex)
+  | lam_eta sat => exact .trans (.lam_eta (sat.extend ex)) (.of_eq rfl _ _)
+  | beta satb sata => exact .trans (.beta (satb.extend ex) (sata.extend ex)) (.of_eq rfl _ _)
 
 end Mathlib.Tactic.CCC
