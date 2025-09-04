@@ -7,6 +7,18 @@ import Mathlib.Tactic.CCC.Lambda.Basic
 
 universe u v w
 
+def Nat.cycleIcc (i j : Nat) : Equiv.Perm Nat where
+  toFun k := if k < i then k else if k < j then k + 1 else if k = j then i else k
+  invFun k := if j < k then k else if i < k then k - 1 else if k = i then j else k
+  left_inv _ := by dsimp; split_ifs <;> omega
+  right_inv _ := by dsimp; split_ifs <;> omega
+
+theorem Nat.cycleIcc_apply (i j k : Nat) : Nat.cycleIcc i j k =
+    if k < i then k else if k < j then k + 1 else if k = j then i else k := rfl
+
+theorem Nat.cycleIcc_symm_apply (i j k : Nat) : (Nat.cycleIcc i j).symm k =
+    if j < k then k else if i < k then k - 1 else if k = i then j else k := rfl
+
 namespace Mathlib.Tactic.CCC
 
 @[simp]
@@ -638,7 +650,55 @@ def RConv.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (ap
   | .unit => rc
   | .prod left right => (rc.1.incrementBVars app tu n hn, rc.2.incrementBVars app tu n hn)
   | .hom source target => fun ex a sata ra =>
-    sorry
+    letI uf := ⇑(Nat.cycleIcc app.length (app.length + ctx.length))
+    letI ui := ⇑(Nat.cycleIcc app.length (app.length + ctx.length)).symm
+    haveI sf (k : ℕ) (hk : k < (app ++ ctx ++ tu :: ex).length) :
+        (app ++ ctx ++ tu :: ex)[k] ∈ (app ++ tu :: ctx ++ ex)[uf k]? := by
+      simp_rw [uf, Nat.cycleIcc_apply]
+      simp only [List.getElem_append, List.getElem_cons]
+      simp only [List.getElem?_append, List.getElem?_cons]
+      by_cases hka : k < app.length
+      · simp [hka, Nat.lt_add_right]
+      have uk : ¬k + 1 < app.length := by omega
+      by_cases hkc : k < app.length + ctx.length
+      · simp [hka, hkc, ← Nat.add_assoc, uk, Nat.sub_eq_zero_iff_le,
+          Nat.sub_add_comm (Nat.le_of_not_lt hka)]
+      by_cases hkk : k = app.length + ctx.length
+      · simp [hka, ← hkk]
+      have vk : app.length + ctx.length < k := by omega
+      simp [hka, hkc, hkk, Nat.sub_eq_zero_iff_le, ← Nat.add_assoc, Nat.not_le_of_lt vk,
+        Nat.not_lt_of_le (Nat.add_one_le_of_lt vk),
+        Nat.sub_add_eq k (app.length + ctx.length) 1]
+    haveI si (k : ℕ) (hk : k < (app ++ tu :: ctx ++ ex).length) :
+        (app ++ tu :: ctx ++ ex)[k] ∈ (app ++ ctx ++ tu :: ex)[ui k]? := by
+      simp_rw [ui, Nat.cycleIcc_symm_apply]
+      simp only [List.getElem_append, List.getElem_cons]
+      simp only [List.getElem?_append, List.getElem?_cons]
+      by_cases hkac : app.length + ctx.length < k
+      · simp [hkac, Nat.lt_asymm, Nat.sub_eq_zero_iff_le, Nat.not_le_of_lt,
+          ← Nat.add_assoc, Nat.lt_add_one_iff, Nat.sub_add_eq k (app.length + ctx.length) 1]
+      by_cases hka : app.length < k
+      · simp [hkac, hka, Nat.sub_lt_iff_lt_add (Nat.one_le_of_lt hka), Nat.lt_add_one_iff,
+          Nat.le_of_not_lt, ← Nat.add_assoc, Nat.lt_asymm, Nat.sub_eq_zero_iff_le,
+          Nat.sub_sub, Nat.add_comm 1, Nat.not_le_of_lt hka]
+      by_cases hkk : k = app.length
+      · have hkcl : ¬k + ctx.length < k := by omega
+        simp [← hkk, hkcl]
+      have vk : k < app.length := by omega
+      simp [hka, hkac, hkk, vk, Nat.lt_add_right]
+    .congr (.of_eq (by
+        simp only [LambdaTerm.replaceBVars, replaceBVars_replaceBVars, uf, ui,
+          Equiv.apply_symm_apply, replaceBVars_bvar]
+        rw [incrementBVars_eq_replaceBVars]
+        refine congrArg (LambdaTerm.app · a) (replaceBVars_congr_left_of_typing satt ?_)
+        rw [List.length_append]
+        intro k hk
+        rw [Nat.cycleIcc_apply]
+        split_ifs <;> first | rfl | omega) _ _)
+      (@RConv.replaceBVars ι κ ζ (app ++ ctx ++ tu :: ex) (app ++ tu :: ctx ++ ex)
+        uf ui target _ sf si (by simp [uf, ui]) (by simp [uf, ui]) _ (rc (tu :: ex) _ _
+          (@RConv.replaceBVars ι κ ζ (app ++ tu :: ctx ++ ex) (app ++ ctx ++ tu :: ex)
+            ui uf source a si sf (by simp [uf, ui]) (by simp [uf, ui]) _ ra)))
 
 def RConv.replace {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx₁ ctx₂ : List (Object ι)} {subf : κ → LambdaTerm ι κ} {subb : Nat → LambdaTerm ι κ}
