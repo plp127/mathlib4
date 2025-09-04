@@ -277,6 +277,19 @@ theorem instantiate_replace {ι : Type u} {κ : Type v} (subf : κ → LambdaTer
   | right _ ih => exact congrArg LambdaTerm.right (ih subf subb n s)
   | bvar _ => rfl
 
+theorem replace_of_bvar {ι : Type u} {κ : Type v}
+    (t : LambdaTerm ι κ) : t.replace .of .bvar = t := by
+  induction t with
+  | of _ => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod ihl ihr
+  | lam dom body ih => exact congrArg (LambdaTerm.lam dom) (.trans (congrArg (body.replace .of ·)
+    (funext fun n => n.casesOn rfl fun k => if_pos (Nat.zero_le k))) ih)
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app ihf iha
+  | left _ ih => exact congrArg LambdaTerm.left ih
+  | right _ ih => exact congrArg LambdaTerm.right ih
+  | bvar _ => rfl
+
 mutual
 
 inductive Normal {ι : Type u} {κ : Type v} (ζ : κ → Object ι) :
@@ -779,5 +792,14 @@ def RConv.ofNeutral {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : L
       (.of_eq (ne.1.toLambdaTerm_extend ex).symm _ _)) ra.toNormal.2⟩
 
 end
+
+def LambdaTerm.normalize {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (ctx : List (Object ι))
+    (tt : Object ι) (t : LambdaTerm ι κ) (satt : Typing ζ ctx t tt) :
+    { c : Normal ζ ctx tt // Convertible satt c.toTyping} :=
+  RConv.toNormal (.congr (.of_eq (replace_of_bvar t) _ _) (RConv.replace (fun k => .of k ctx)
+    (fun n hn => .bvar n ctx[n] (Option.mem_def.2 (List.getElem?_eq_getElem hn))) satt
+      (fun k => RConv.ofNeutral ⟨.of k ctx, .refl (.of k ctx)⟩)
+      (fun n hn => RConv.ofNeutral
+        ⟨.bvar n ctx[n] (Option.mem_def.2 (List.getElem?_eq_getElem hn)), .refl _⟩)))
 
 end Mathlib.Tactic.CCC
