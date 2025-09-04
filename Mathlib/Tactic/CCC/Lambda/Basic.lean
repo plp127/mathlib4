@@ -395,7 +395,7 @@ theorem read_incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
       · rewrite! (castMode := .all) [if_neg hd]
         rw [Subsingleton.elim (Eq.rec ..) (.bvar _ _ (by grind))]
         apply List.TProd.get_insert_of_lt
-        exact (Nat.lt_of_not_ge hd).trans_eq hn.symm
+        exact (Nat.lt_of_not_le hd).trans_eq hn.symm
 
 theorem read_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (app : List (Object ι))
@@ -442,7 +442,7 @@ theorem read_instantiate {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
         · rewrite! (castMode := .all) [if_neg hl]
           rw [Subsingleton.elim (Eq.rec ..) (.bvar _ _ (by grind))]
           apply List.TProd.get_insert_of_lt
-          exact (Nat.lt_of_le_of_ne (Nat.le_of_not_gt hl) hd).trans_eq hn.symm
+          exact (Nat.lt_of_le_of_ne (Nat.le_of_not_lt hl) hd).trans_eq hn.symm
 
 theorem read_eq_of_convertible {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     (ri : ι → Type w) (rk : (k : κ) → (ζ k).read ri) (ctx : List (Object ι))
@@ -501,7 +501,7 @@ theorem instantiate_incrementBVars {ι : Type u} {κ : Type v} (t : LambdaTerm �
     by_cases hn : n ≤ deBruijnIndex
     · rw [if_pos hn, LambdaTerm.instantiate, if_neg (Nat.ne_of_gt (Nat.lt_add_one_of_le hn)),
         if_pos (Nat.lt_add_one_of_le hn), Nat.add_sub_cancel]
-    · rw [if_neg hn, LambdaTerm.instantiate, if_neg (Nat.ne_of_lt (Nat.lt_of_not_ge hn)),
+    · rw [if_neg hn, LambdaTerm.instantiate, if_neg (Nat.ne_of_lt (Nat.lt_of_not_le hn)),
         if_neg (mt Nat.le_of_lt hn)]
 
 theorem incrementBVars_incrementBVars_of_ge {ι : Type u} {κ : Type v} (t : LambdaTerm ι κ)
