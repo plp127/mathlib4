@@ -206,6 +206,65 @@ def Convertible.congr_replaceBVars_right {ι : Type u} {κ : Type v} {ζ : κ �
     refine congrArg (LambdaTerm.replaceBVars · _) (funext fun n => n.casesOn rfl fun u => ?_)
     simp
 
+@[simp]
+def LambdaTerm.replace {ι : Type u} {κ : Type v}
+    (subf : κ → LambdaTerm ι κ) (subb : Nat → LambdaTerm ι κ)
+    (t : LambdaTerm ι κ) : LambdaTerm ι κ :=
+  match t with
+  | .of k => subf k
+  | .unit => .unit
+  | .prod l r => .prod (l.replace subf subb) (r.replace subf subb)
+  | .lam dom body => .lam dom (body.replace
+    (fun k => (subf k).incrementBVars 0)
+    (fun n => n.casesOn (.bvar 0) fun u => (subb u).incrementBVars 0))
+  | .app fn arg => .app (fn.replace subf subb) (arg.replace subf subb)
+  | .left tup => .left (tup.replace subf subb)
+  | .right tup => .right (tup.replace subf subb)
+  | .bvar deBruijnIndex => subb deBruijnIndex
+
+@[simp]
+def Typing.replace {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx₁ ctx₂ : List (Object ι)}
+    {subf : κ → LambdaTerm ι κ} {subb : Nat → LambdaTerm ι κ} {tt : Object ι} {t : LambdaTerm ι κ}
+    (satf : (k : κ) → Typing ζ ctx₂ (subf k) (ζ k))
+    (sats : (n : Nat) → (hn : n < ctx₁.length) → Typing ζ ctx₂ (subb n) ctx₁[n])
+    (satt : Typing ζ ctx₁ t tt) : Typing ζ ctx₂ (t.replace subf subb) tt :=
+  match satt with
+  | .of k _ => satf k
+  | .unit _ => .unit ctx₂
+  | .prod satl satr => .prod (satl.replace satf sats) (satr.replace satf sats)
+  | .lam sat => .lam (sat.replace
+    (fun k => (satf k).incrementBVars [] _ 0 (Eq.refl 0))
+    (fun n => n.casesOn
+      (fun hn => .bvar 0 _ (Option.mem_some_self _))
+      (fun n hn => (sats n (Nat.lt_of_succ_lt_succ hn)).incrementBVars [] _ 0 (Eq.refl 0))))
+  | .app satd sata => .app (satd.replace satf sats) (sata.replace satf sats)
+  | .left sat => .left (sat.replace satf sats)
+  | .right sat => .right (sat.replace satf sats)
+  | .bvar deBruijnIndex type sat =>
+    Option.mem_some.1 (List.getElem?_eq_getElem _ ▸ sat) ▸ sats deBruijnIndex (by grind)
+
+theorem instantiate_replace {ι : Type u} {κ : Type v} (subf : κ → LambdaTerm ι κ)
+    (subb : Nat → LambdaTerm ι κ) (n : Nat) (s t : LambdaTerm ι κ) :
+    (t.replace subf subb).instantiate n s =
+      t.replace (fun k => (subf k).instantiate n s) fun k => (subb k).instantiate n s := by
+  induction t generalizing subf subb n s with
+  | of _ => rfl
+  | unit => rfl
+  | prod _ _ ihl ihr => exact congrArg₂ LambdaTerm.prod (ihl subf subb n s) (ihr subf subb n s)
+  | lam dom body ih =>
+    refine congrArg (LambdaTerm.lam dom) ((ih _ _ (n + 1) (s.incrementBVars 0)).trans ?_)
+    refine congrArg₂ (fun f b => body.replace f b) ?_ ?_
+    · funext k
+      rw [← incrementBVars_instantiate_of_ge _ _ (Nat.zero_le n)]
+    · funext k
+      cases k
+      · simp
+      · rw [← incrementBVars_instantiate_of_ge _ _ (Nat.zero_le n)]
+  | app _ _ ihf iha => exact congrArg₂ LambdaTerm.app (ihf subf subb n s) (iha subf subb n s)
+  | left _ ih => exact congrArg LambdaTerm.left (ih subf subb n s)
+  | right _ ih => exact congrArg LambdaTerm.right (ih subf subb n s)
+  | bvar _ => rfl
+
 mutual
 
 inductive Normal {ι : Type u} {κ : Type v} (ζ : κ → Object ι) :
@@ -444,6 +503,34 @@ theorem Neutral.toLambdaTerm_extend {ι : Type u} {κ : Type v} {ζ : κ → Obj
 
 end
 
+mutual
+
+def Normal.replace {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx₁ ctx₂ : List (Object ι)}
+    (subf : (k : κ) → Neutral ζ ctx₂ (ζ k))
+    (subb : (n : Nat) → (hn : n < ctx₁.length) → Neutral ζ ctx₂ ctx₁[n]) {tt : Object ι}
+    (t : Normal ζ ctx₁ tt) : Normal ζ ctx₂ tt :=
+  match t with
+  | .ofNeutral n => .ofNeutral (n.replace subf subb)
+  | .lam dom body => .lam dom (body.replace
+    (fun k => (subf k).incrementBVars ctx₂ [] dom 0 (Eq.refl 0) rfl)
+    (fun n => n.casesOn (fun _ => .bvar 0 dom (Option.mem_some_self dom)) (fun u hu =>
+      (subb u (Nat.lt_of_succ_lt_succ hu)).incrementBVars ctx₂ [] dom 0 (Eq.refl 0) rfl)))
+  | .unit _ => .unit ctx₂
+  | .prod left right => .prod (left.replace subf subb) (right.replace subf subb)
+
+def Neutral.replace {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx₁ ctx₂ : List (Object ι)}
+    (subf : (k : κ) → Neutral ζ ctx₂ (ζ k))
+    (subb : (n : Nat) → (hn : n < ctx₁.length) → Neutral ζ ctx₂ ctx₁[n]) {tt : Object ι}
+    (t : Neutral ζ ctx₁ tt) : Neutral ζ ctx₂ tt :=
+  match t with
+  | .of k _ => subf k
+  | .app fn arg => .app (fn.replace subf subb) (arg.replace subf subb)
+  | .left tup => .left (tup.replace subf subb)
+  | .right tup => .right (tup.replace subf subb)
+  | .bvar n typ sat => Option.mem_some.1 (List.getElem?_eq_getElem _ ▸ sat) ▸ subb n (by grind)
+
+end
+
 def RConv {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
     {tt : Object ι} {t : LambdaTerm ι κ} (satt : Typing ζ ctx t tt) : Type (max u v) :=
   match tt with
@@ -553,39 +640,48 @@ def RConv.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (ap
   | .hom source target => fun ex a sata ra =>
     sorry
 
-def RConv.replace {ι : Type u} {κ : Type v} [hκ : IsEmpty κ] {ζ : κ → Object ι}
-    {ctx₁ ctx₂ : List (Object ι)} {sub : Nat → LambdaTerm ι κ} {tt : Object ι} {t : LambdaTerm ι κ}
-    (sats : (n : Nat) → (hn : n < ctx₁.length) → Typing ζ ctx₂ (sub n) ctx₁[n])
-    (satt : Typing ζ ctx₁ t tt) (rc : (n : Nat) → (hn : n < ctx₁.length) → RConv (sats n hn)) :
-    RConv (satt.replaceBVars sats) :=
-  match satt, hκ with
-  | .unit _, _ => PUnit.unit
-  | .prod satl satr, _ =>
-    (.congr (.symm (.prod_left _ _)) (.replace sats satl rc),
-      .congr (.symm (.prod_right _ _)) (.replace sats satr rc))
-  | .lam sat, _ => fun ex a sata ra => by
+def RConv.replace {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx₁ ctx₂ : List (Object ι)} {subf : κ → LambdaTerm ι κ} {subb : Nat → LambdaTerm ι κ}
+    {tt : Object ι} {t : LambdaTerm ι κ} (satf : (k : κ) → Typing ζ ctx₂ (subf k) (ζ k))
+    (sats : (n : Nat) → (hn : n < ctx₁.length) → Typing ζ ctx₂ (subb n) ctx₁[n])
+    (satt : Typing ζ ctx₁ t tt) (ru : (k : κ) → RConv (satf k))
+    (rc : (n : Nat) → (hn : n < ctx₁.length) → RConv (sats n hn)) :
+    RConv (satt.replace satf sats) :=
+  match satt with
+  | .of k _ => ru k
+  | .unit _ => PUnit.unit
+  | .prod satl satr =>
+    (.congr (.symm (.prod_left _ _)) (.replace satf sats satl ru rc),
+      .congr (.symm (.prod_right _ _)) (.replace satf sats satr ru rc))
+  | .lam sat => fun ex a sata ra => by
     refine .congr (.trans (.of_eq ?_ _ _)
         (.symm (.beta _ _)))
-      (@RConv.replace ι κ _ ζ (_ :: ctx₁) (ctx₂ ++ ex)
-        (fun n => n.casesOn a fun u => sub u) _ _
+      (@RConv.replace ι κ ζ (_ :: ctx₁) (ctx₂ ++ ex) subf
+        (fun n => n.casesOn a fun u => subb u) _ _ (fun k => (satf k).extend ex)
         (fun n => n.casesOn (fun _ => sata) (fun u hu =>
           (sats u (Nat.lt_of_succ_lt_succ hu)).extend ex))
-        sat (fun n => n.casesOn (fun _ => ra) (fun u hu =>
+        sat (fun k => (ru k).extend ex) (fun n => n.casesOn (fun _ => ra) (fun u hu =>
           (rc u (Nat.lt_of_succ_lt_succ hu)).extend ex)))
-    rw [instantiate_replaceBVars]
-    refine congrArg (LambdaTerm.replaceBVars · _) (funext fun n => n.casesOn rfl fun u => ?_)
-    simp
-  | .app satd sata, _ =>
+    rw [instantiate_replace]
+    refine congrArg₂ (fun f k => LambdaTerm.replace f k _) ?_ ?_
+    · funext k
+      rw [instantiate_incrementBVars]
+    · funext k
+      cases k
+      · simp
+      · simp
+  | .app satd sata =>
     .congr (.of_eq (by simp) _ _) (@RConv.replaceBVars ι κ ζ (ctx₂ ++ []) ctx₂ id id
       tt _ (by grind) (by grind) (fun _ _ => rfl) (fun _ _ => rfl) _
-      (RConv.replace sats satd rc [] _
-        (sata.replaceBVars fun n hn =>
-          (sats n hn).replaceBVars fun u hu => .bvar u ctx₂[u] (by simp))
-        ((RConv.replace _ sata (fun n hn => (rc n hn).replaceBVars
+      (RConv.replace satf sats satd ru rc [] _
+        (sata.replace (fun k => (satf k).replaceBVars fun u hu => .bvar u ctx₂[u] (by simp))
+        (fun n hn => (sats n hn).replaceBVars fun u hu => .bvar u ctx₂[u] (by simp)))
+        ((RConv.replace _ _ sata (fun k => (ru k).replaceBVars (by grind) (by grind)
+          (fun _ _ => rfl) (fun _ _ => rfl) _) (fun n hn => (rc n hn).replaceBVars
           (by grind) (by grind) (fun _ _ => rfl) (fun _ _ => rfl) _)))))
-  | .left sat, _ => (RConv.replace sats sat rc).fst
-  | .right sat, _ => (RConv.replace sats sat rc).snd
-  | .bvar deBruijnIndex type sat, _ =>
+  | .left sat => (RConv.replace satf sats sat ru rc).fst
+  | .right sat => (RConv.replace satf sats sat ru rc).snd
+  | .bvar deBruijnIndex type sat =>
     Eq.rec (motive := fun _ h => RConv (h ▸ sats deBruijnIndex (by grind)))
       (rc deBruijnIndex (by grind)) (Option.mem_some.1 (List.getElem?_eq_getElem
         (show deBruijnIndex < ctx₁.length by grind) ▸ sat))
