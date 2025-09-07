@@ -8,6 +8,12 @@ import Mathlib.Tactic.CCC.Lambda.Normalization
 import Mathlib.Data.Finsupp.Defs
 import Mathlib.Logic.Equiv.Fin.Basic
 
+/- following
+S. V. Solov'ev,
+The category of finite sets and Cartesian closed categories,
+Zap. Nauchn. Sem. LOMI, 1981, Volume 105, 174–194 -/
+
+
 universe u v w
 
 namespace Mathlib.Tactic.CCC
