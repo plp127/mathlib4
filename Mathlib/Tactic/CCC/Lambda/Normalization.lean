@@ -5,6 +5,9 @@ Authors: Aaron Liu
 -/
 import Mathlib.Tactic.CCC.Lambda.Basic
 
+
+-- following https://www.cs.ru.nl/masters-theses/2024/B_Kocsis___Normalization_for_the_simply_typed_%CE%BB-calculus.pdf
+
 universe u v w
 
 def Nat.cycleIcc (i j : Nat) : Equiv.Perm Nat where
