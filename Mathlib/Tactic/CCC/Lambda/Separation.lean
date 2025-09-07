@@ -122,9 +122,9 @@ def restrict {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) {typ : 
   | .hom source target =>
     ⟨fun k => (restrict f i (rk₂ (extend f i k).1)).1, fun k hk ra₁ ra₂ h =>
       ((plift_extends_unique f i
+        (hk ra₁ (extend f i ra₁).1 (extend f i ra₁).2)
         ((restrict f i (rk₂ (extend f i ra₁).1)).2 (k ra₁)
-          (hk ra₁ (extend f i ra₁).1 (extend f i ra₁).2))
-        (hk ra₁ (extend f i ra₁).1 (extend f i ra₁).2)).down ▸ hk ra₁ ra₂ h :)⟩
+          (hk ra₁ (extend f i ra₁).1 (extend f i ra₁).2))).down ▸ hk ra₁ ra₂ h :)⟩
 
 def plift_extends_unique {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) {typ : Object ι}
     {rk₁ rk₂ : typ.read fun u => Fin (2 ^ f u)} {rk₃ : typ.read fun u => Fin (2 ^ extendI f i u)}
@@ -145,5 +145,27 @@ theorem extends_unique {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : �
     {rk₁ rk₂ : typ.read fun u => Fin (2 ^ f u)} {rk₃ : typ.read fun u => Fin (2 ^ extendI f i u)}
     (h₁ : Extends f i rk₁ rk₃) (h₂ : Extends f i rk₂ rk₃) : rk₁ = rk₂ :=
   (plift_extends_unique f i h₁ h₂).down
+
+def IsRightProjection {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) (ss : List (Object ι))
+    (rk₂ : (ss.foldr Object.hom (.of i)).read fun u => Fin (2 ^ extendI f i u))
+    (fn : (ss.foldr (fun k t => k.read (fun u => Fin (2 ^ extendI f i u)) → t) (Fin 2))) : Prop :=
+  match ss with
+  | [] => (finProdFinEquiv.symm (rk₂.cast (by simp [Nat.pow_add])) : Fin (2 ^ f i) × Fin 2).2 = fn
+  | s :: ss => ∀ k, IsRightProjection f i ss (rk₂ k) (fn k)
+
+def extendWith {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) (ss : List (Object ι))
+    (rk₁ : (ss.foldr Object.hom (.of i)).read fun u => Fin (2 ^ f u))
+    (fn : (ss.foldr (fun k t => k.read (fun u => Fin (2 ^ extendI f i u)) → t) (Fin 2))) :
+    { rk₂ : (ss.foldr Object.hom (.of i)).read fun u => Fin (2 ^ extendI f i u) //
+      Extends f i rk₁ rk₂ ∧ IsRightProjection f i ss rk₂ fn } :=
+  match ss with
+  | [] =>
+    ⟨(finProdFinEquiv ((rk₁, fn) : Fin (2 ^ f i) × Fin 2)).cast (by simp [Nat.pow_add]),
+      by simp [Extends], by simp [IsRightProjection]⟩
+  | s :: ss =>
+    ⟨fun k => (extendWith f i ss (rk₁ (restrict f i k).1) (fn k)).1,
+      fun ra₁ ra₂ h => extends_unique f i h ((restrict f i ra₂).2 ra₁ h) ▸
+        (extendWith f i ss (rk₁ ra₁) (fn ra₂)).2.1,
+      fun k => (extendWith f i ss (rk₁ (restrict f i k).1) (fn k)).2.2⟩
 
 end Mathlib.Tactic.CCC
