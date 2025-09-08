@@ -64,6 +64,7 @@ inductive Object (ι : Type u) : Type u where
   | unit : Object ι
   | prod (left right : Object ι) : Object ι
   | hom (source target : Object ι) : Object ι
+deriving DecidableEq
 
 @[simp]
 def Object.read {ι : Type u} (ri : ι → Type w) (t : Object ι) : Type w :=

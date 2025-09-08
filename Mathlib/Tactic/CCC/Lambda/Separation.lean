@@ -170,8 +170,63 @@ def extendWith {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) (ss :
       by simp [Extends], by simp [IsRightProjection]⟩
   | s :: ss =>
     ⟨fun k => (extendWith f i ss (rk₁ (restrict f i k).1) (fn k)).1,
-      fun ra₁ ra₂ h => extends_unique f i h ((restrict f i ra₂).2 ra₁ h) ▸
-        (extendWith f i ss (rk₁ ra₁) (fn ra₂)).2.1,
+      fun ra₁ ra₂ h => Eq.rec (motive := fun x _ =>
+          Extends f i (rk₁ ra₁) (extendWith f i ss (rk₁ x) (fn ra₂)).1)
+        (extendWith f i ss (rk₁ ra₁) (fn ra₂)).2.1
+        (extends_unique f i h ((restrict f i ra₂).2 ra₁ h)),
       fun k => (extendWith f i ss (rk₁ (restrict f i k).1) (fn k)).2.2⟩
+
+mutual
+
+def Normalu.decEq {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ] {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {typ : Object ι} (t₁ t₂ : Normalu ζ ctx typ) : Decidable (t₁ = t₂) :=
+  match typ, t₁ with
+  | _, .ofNeutral n₁ =>
+    match t₂ with
+    | .ofNeutral n₂ => @decidable_of_iff _ (HEq n₁ n₂) (by simp) (Neutralu.decHEq rfl n₁ n₂)
+  | _, .lam _ body₁ =>
+    match t₂ with
+    | .lam _ body₂ => @decidable_of_iff _ (body₁ = body₂) (by simp) (Normalu.decEq body₁ body₂)
+
+def Neutralu.decHEq {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ] {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {typ₁ typ₂ : Object ι} (eq : typ₁ = typ₂)
+    (t₁ : Neutralu ζ ctx typ₁) (t₂ : Neutralu ζ ctx typ₂) : Decidable (HEq t₁ t₂) :=
+  match ctx, typ₁, t₁ with
+  | _, _, .of k₁ _ =>
+    match t₂ with
+    | .of k₂ _ => decidable_of_iff (k₁ = k₂)
+      ⟨fun h => h ▸ HEq.rfl, fun h => Option.some.inj
+        (congr_heq (congr_arg_heq (fun typ (x : Neutralu ζ _ typ) =>
+          (x.casesOn
+            (of := fun k _ => some k)
+            (app := fun _ _ => none)
+            (bvar := fun _ _ _ => none) : Option κ)) eq) h :)⟩
+    | .app _ _ => .isFalse (by intro h; cases eq; cases h)
+    | .bvar _ _ _ => .isFalse (by intro h; cases eq; cases h)
+  | ctx, _, .app fn₁ arg₁ =>
+    match ctx, typ₂, t₂ with
+    | _, _, .of _ _ => .isFalse (by intro h; cases eq; cases h)
+    | _, _, .app fn₂ arg₂ => @decidable_of_iff _ (∃ (_ : _ = _), HEq fn₁ fn₂ ∧ HEq arg₁ arg₂)
+      ⟨fun h => by cases h.1; cases h.2.1; cases h.2.2; rfl, fun h => by cases eq; cases h; simp⟩
+      (@exists_prop_decidable _ _ _
+        (fun h => @instDecidableAnd _ _ (Neutralu.decHEq h fn₁ fn₂)
+          (@decidable_of_iff _ ((Object.hom.inj h).1 ▸ arg₁ = arg₂)
+            (by cases h; simp) (Normalu.decEq ((Object.hom.inj h).1 ▸ arg₁) arg₂))))
+    | _, _, .bvar _ _ _ => .isFalse (by intro h; cases eq; cases h)
+  | ctx, _, .bvar n₁ _ _ =>
+    match ctx, typ₂, t₂ with
+    | _, _, .of _ _ => .isFalse (by intro h; cases eq; cases h)
+    | _, _, .app _ _ => .isFalse (by intro h; cases eq; cases h)
+    | _, _, .bvar n₂ _ _ => decidable_of_iff (n₁ = n₂)
+      (by constructor <;> (intro h; cases eq; cases h; rfl))
+
+end
+
+instance {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ] {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {typ : Object ι} : DecidableEq (Normalu ζ ctx typ) := Normalu.decEq
+
+instance {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ] {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {typ : Object ι} : DecidableEq (Neutralu ζ ctx typ) :=
+  fun u v => @decidable_of_iff (u = v) (HEq u v) heq_iff_eq (Neutralu.decHEq rfl u v)
 
 end Mathlib.Tactic.CCC
