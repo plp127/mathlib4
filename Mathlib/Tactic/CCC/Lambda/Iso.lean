@@ -28,6 +28,7 @@ inductive Objectq (ι : Type u) : Type u where
 inductive Objectu (ι : Type u) where
   | of (i : ι) : Objectu ι
   | hom (source target : Objectu ι) : Objectu ι
+deriving DecidableEq
 
 def Object₀.toObject {ι : Type u} (o : Object₀ ι) : Object ι :=
   match o with
@@ -45,6 +46,22 @@ def Objectu.toObject₀ {ι : Type u} (o : Objectu ι) : Object₀ ι :=
   match o with
   | .of i => .of i
   | .hom source target => .hom source.toObject₀ target.toObject₀
+
+theorem Objectu.toObject₀_injective {ι : Type u} : (@Objectu.toObject₀ ι).Injective := by
+  intro o₁ o₂ h
+  induction o₁ generalizing o₂ <;> cases o₂ <;> try (cases h; done)
+  · cases h; rfl
+  · apply Object₀.hom.inj at h
+    apply congrArg₂ Objectu.hom <;> solve_by_elim [And.left, And.right]
+
+theorem Object₀.toObject_injective {ι : Type u} : (@Object₀.toObject ι).Injective := by
+  intro o₁ o₂ h
+  induction o₁ generalizing o₂ <;> cases o₂ <;> try (cases h; done)
+  · cases h; rfl
+  · apply Object.prod.inj at h
+    apply congrArg₂ Object₀.prod <;> solve_by_elim [And.left, And.right]
+  · apply Object.hom.inj at h
+    apply congrArg₂ Object₀.hom <;> solve_by_elim [And.left, And.right]
 
 def Object.elimUnit {ι : Type u} (o : Object ι) : Option (Object₀ ι) :=
   match o with
