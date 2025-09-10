@@ -26,6 +26,22 @@ theorem List.TProd.get_mk {ι : Type u} {α : ι → Type v} {l : List ι} (f : 
     | zero => cases hi; rfl
     | succ n => exact ih n hi
 
+def List.TProd.ofFn {ι : Type u} {α : ι → Type v} (l : List ι)
+    (f : (n : Fin l.length) → α l[n]) : List.TProd α l :=
+  match l with
+  | [] => PUnit.unit
+  | _ :: xs => (f ⟨0, Nat.zero_lt_succ _⟩, List.TProd.ofFn xs fun n => f n.succ)
+
+theorem List.TProd.get_ofFn {ι : Type u} {α : ι → Type v} (l : List ι)
+    (f : (n : Fin l.length) → α l[n]) (n : Fin l.length) : (List.TProd.ofFn l f).get n (l[n.1]'n.2)
+      (Option.mem_def.2 (getElem?_eq_getElem n.2)) = f n := by
+  induction l with
+  | nil => exact n.elim0
+  | cons x xs ih =>
+    cases n using Fin.cases with
+    | zero => rfl
+    | succ n => exact ih _ n
+
 namespace Mathlib.Tactic.CCC
 
 mutual
@@ -322,7 +338,7 @@ def Neutralu.separateOf {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableE
     toFun := Pi.single (ζ k).splitArrows.2 1
     support := {(ζ k).splitArrows.2}
     mem_support_toFun := by simp [Pi.single_apply]
-  }, Function.update (fun _ => interpretZero _ _) k (interpretOne _ _ (by simp)),
+  }, Function.update (fun _ => interpretZero _ _) k (interpretOne _ (ζ k) (by simp)),
     .mk ctx (interpretZero _),
     (castInterpretZeroOneSeparation _ typ₁ typ₂ (ζ k) (by simp) tt tz).cast
       (congrArg (@Eq.rec _ _ _ · _ tt) (.symm ?_))
@@ -360,6 +376,73 @@ def Neutralu.separateOf {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableE
     rw [ih hc, interpretZero]
   · intro _ _ _ _ _
     apply List.TProd.get_mk
+
+def Neutralu.separateBVar {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
+    {ζ : κ → Object ι} {ctx : List (Object ι)} {typ₁ typ₂ : Object ι}
+    (t : Neutralu ζ ctx typ₁) (n : Nat) (tb : Objectu ι)
+    (ht : tb.toObject₀.toObject ∈ ctx[n]?) (tt : typ₁ = typ₂) (tz : tb.toObject₀.toObject = typ₂)
+    (h : tt ▸ t ≠ tz ▸ Neutralu.bvar n tb.toObject₀.toObject ht) :
+    (f : ι →₀ Nat) × (rk : (k : κ) → (ζ k).read fun u => Fin (2 ^ f u)) ×
+    (ci : ctx.TProd (Object.read fun u ↦ Fin (2 ^ f u))) ×
+      Separation (fun u => Fin (2 ^ f u))
+        (tt ▸ t.toNeutral.toLambdaTerm.read (fun u => Fin (2 ^ f u))
+          rk ctx ci typ₁ t.toNeutral.toTyping)
+        (tz ▸ ci.get n tb.toObject₀.toObject ht) := by
+  refine ⟨{
+    toFun := Pi.single tb.splitArrows.2 1
+    support := {tb.splitArrows.2}
+    mem_support_toFun := by simp [Pi.single_apply]
+  }, fun _ => interpretZero _ _,
+    .ofFn ctx (Function.update (fun u => interpretZero _ ctx[u]) ⟨n, by grind⟩
+      ((show tb.toObject₀.toObject = ctx[Fin.mk n _] by grind) ▸ interpretOne _ tb
+        (Finsupp.mem_support_iff.1 (Finset.mem_singleton_self tb.splitArrows.2)))),
+    (castInterpretZeroOneSeparation _ typ₁ typ₂ tb (by simp) tt tz).cast
+      (congrArg (@Eq.rec _ _ _ · _ tt) (.symm ?_))
+      (congrArg (@Eq.rec _ _ _ · _ tz) (.symm (by
+        rewrite! (castMode := .all) [show tb.toObject₀.toObject = ctx[n]'(by grind) by grind]
+        rw [List.TProd.get_ofFn ctx _ ⟨n, _⟩, Function.update_self])))⟩
+  have hc (hb : List.foldl (fun t s ↦ s.hom t) typ₁ t.telescope.fst = tb.toObject₀.toObject) :
+      ¬hb ▸ t.telescope.2.2 = .bvar n tb.toObject₀.toObject ht := by
+    cases t with
+    | of _ _ => cases tz; exact h
+    | app fn _ =>
+      exfalso
+      cases tz
+      rw [← tt] at hb
+      dsimp only [Neutralu.telescope, List.foldl] at hb
+      rw [← List.foldr_reverse] at hb
+      generalize fn.telescope.1.reverse = u at hb
+      revert hb
+      apply ne_of_apply_ne (fun x => (x.rec
+        (of := fun _ => 0)
+        (unit := 0)
+        (prod := fun _ _ _ _ => 0)
+        (hom := fun _ _ _ ih => ih + 1) : Nat))
+      apply Nat.ne_of_gt
+      induction u with
+      | nil => apply Nat.lt_add_one
+      | cons _ _ ih => exact Nat.lt_add_right 1 ih
+    | bvar _ _ _ => cases tz; exact h
+  refine Neutralu.rec (motive_1 := fun _ _ _ => True)
+    (fun _ _ => trivial) (fun _ _ _ _ => trivial) ?_ ?_ ?_ t ht hc
+  · intro _ _ _ _
+    rfl
+  · intro ctx _ _ fn arg ih _ ht hc
+    dsimp only [Neutralu.toNeutral, Neutral.toTyping, LambdaTerm.read]
+    rw [ih ht hc, interpretZero]
+  · intro ctx m typ _ hl h
+    have hm : m < ctx.length := by grind
+    cases show ctx[m]'hm = typ by grind
+    dsimp [Neutralu.toNeutral, Neutral.toTyping]
+
+    apply (List.TProd.get_ofFn _ _ ⟨m, hm⟩).trans
+    apply Function.update_of_ne
+    intro hnm
+    cases hnm
+    have eq := Option.some.inj ((List.getElem?_eq_getElem hm).symm.trans (Option.mem_def.1 hl))
+    apply h eq
+    rewrite! [eq]
+    rfl
 
 mutual
 
@@ -408,8 +491,19 @@ def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq 
     match ctx, tt₂, t₂ with
     | _, _, .of u _ => Neutralu.separateOf (.app fn arg) u ht₁ ht₂ h
     | _, _, .app fn arg => sorry
-    | _, _, .bvar n typ sat => sorry
-  | _, _, .bvar n typ sat => sorry
+    | ctx, _, .bvar n tb sat => Eq.rec
+      (fun hct hh =>
+        by exact Neutralu.separateBVar (.app fn arg) n (ctx[n]'(by grind)) hh ht₁ hct (by grind))
+      (show (ctx[n]'(by grind)).toObject₀.toObject = tb by grind) ht₂ sat
+  | ctx, _, .bvar n tb sat =>
+    haveI kk (hct : (ctx[n]'(by grind)).toObject₀.toObject = typ.toObject₀.toObject)
+        (hh : (ctx[n]'(by grind)).toObject₀.toObject ∈
+          (ctx.map fun t ↦ t.toObject₀.toObject)[n]?) :=
+      Neutralu.separateBVar t₂ n (ctx[n]'(by grind)) hh ht₂ hct (by grind)
+    Eq.rec (fun hct hh =>
+        haveI k := kk hct hh
+        ⟨k.1, k.2.1, k.2.2.1, by exact k.2.2.2.symm⟩)
+      (show (ctx[n]'(by grind)).toObject₀.toObject = tb by grind) ht₁ sat
 
 end
 
