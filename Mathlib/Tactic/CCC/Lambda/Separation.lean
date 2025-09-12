@@ -42,6 +42,63 @@ theorem List.TProd.get_ofFn {ι : Type u} {α : ι → Type v} (l : List ι)
     | zero => rfl
     | succ n => exact ih _ n
 
+@[simp]
+def List.TProd.castList {ι : Type u} {α : ι → Type v} {l₁ l₂ : List ι}
+    (eq : l₁ = l₂) (t : l₁.TProd α) : l₂.TProd α :=
+  match l₁, l₂  with
+  | [], [] => t
+  | _ :: _, _ :: _ =>
+    (cast (congrArg α (List.cons_eq_cons.1 eq).1) t.1,
+      List.TProd.castList (List.cons_eq_cons.1 eq).2 t.2)
+
+@[simp]
+theorem List.TProd.castList_refl {ι : Type u} {α : ι → Type v} {l : List ι}
+    (eq : l = l) (t : l.TProd α) : t.castList eq = t := by
+  induction l <;> simp_all
+
+@[simp]
+theorem List.TProd.castList_castList {ι : Type u} {α : ι → Type v} {l₁ l₂ l₃ : List ι}
+    (eq₁ : l₁ = l₂) (eq₂ : l₂ = l₃) (t : l₁.TProd α) :
+    (t.castList eq₁).castList eq₂ = t.castList (eq₁.trans eq₂) := by
+  subst eq₁ eq₂; simp
+
+@[simp]
+theorem List.TProd.get_castList {ι : Type u} {α : ι → Type v} {l₁ l₂ : List ι}
+    (eq : l₁ = l₂) (t : l₁.TProd α) (n : Nat) {i : ι} (hi : i ∈ l₂[n]?) :
+    (t.castList eq).get n i hi = t.get n i (by grind) := by
+  subst eq; simp
+
+def List.TProd.append {ι : Type u} {α : ι → Type v} {l₁ l₂ : List ι}
+    (t₁ : List.TProd α l₁) (t₂ : List.TProd α l₂) : List.TProd α (l₁ ++ l₂) :=
+  match l₁ with
+  | [] => t₂
+  | _ :: _ => (t₁.1, List.TProd.append t₁.2 t₂)
+
+theorem List.TProd.get_append_of_lt {ι : Type u} {α : ι → Type v} {l₁ l₂ : List ι}
+    (t₁ : l₁.TProd α) (t₂ : l₂.TProd α) (n : Nat) (hn : n < l₁.length) {i : ι}
+    (hi : i ∈ (l₁ ++ l₂)[n]?) : (t₁.append t₂).get n i hi = t₁.get n i (by grind) := by
+  induction l₁ generalizing n with
+  | nil => cases hn
+  | cons x xs ih =>
+    cases n with
+    | zero => cases hi; rfl
+    | succ n => exact ih t₁.2 n (Nat.lt_of_add_lt_add_right hn) hi
+
+theorem List.TProd.get_append_of_ge {ι : Type u} {α : ι → Type v} {l₁ l₂ : List ι}
+    (t₁ : l₁.TProd α) (t₂ : l₂.TProd α) (n : Nat) (hn : l₁.length ≤ n) {i : ι}
+    (hi : i ∈ (l₁ ++ l₂)[n]?) :
+    (t₁.append t₂).get n i hi = t₂.get (n - l₁.length) i (by grind) := by
+  induction l₁ generalizing n with
+  | nil => rfl
+  | cons x xs ih =>
+    cases n with
+    | zero => cases hn
+    | succ n =>
+      conv =>
+        enter [2, 2]
+        rw [List.length_cons, Nat.add_sub_add_right]
+      exact ih t₁.2 n (Nat.le_of_add_le_add_right hn) hi
+
 namespace Mathlib.Tactic.CCC
 
 mutual
@@ -594,7 +651,24 @@ def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq 
     match ctx, tt₂, t₂ with
     | _, _, .of u _ => Neutralu.separateOf op cop (.app fn₁ arg₁) u ht₁ ht₂ h
     | _, _, .app fn₂ arg₂ =>
-      sorry
+      if hcc : _ = _ then
+        if hhc : (by exact hcc ▸ arg₁) = arg₂ then
+          match fn₂.uType hc with
+          | ⟨.hom uTyp _, huTyp⟩ =>
+            haveI k := Neutralu.separate (op ++ [uTyp])
+                (List.TProd.castList List.map_append.symm
+                  (cop.append (((Object.hom.inj huTyp).1 ▸ arg₂ :), PUnit.unit)))
+              hc typ (.hom _ tt₁) (.hom _ _)
+              ((congrArg₂ Object.hom (hcc.trans (Object.hom.inj huTyp).1.symm) ht₁).trans (by simp))
+              ((congrArg₂ Object.hom (Object.hom.inj huTyp).1.symm ht₂).trans (by simp)) fn₁ fn₂
+              (fun hff => by
+                cases hcc; cases hhc; cases ht₁; cases ht₂
+                apply h
+                rw [← heq_iff_eq, eqRec_heq_iff, heq_eqRec_iff_heq] at hff
+                simpa using hff)
+            ⟨k.1, k.2.1, k.2.2.1, k.2.2.2.cast sorry sorry⟩
+        else sorry
+      else sorry
     | ctx, _, .bvar n tb sat => Eq.rec
       (fun hct hh => by
         exact Neutralu.separateBVar op cop (.app fn₁ arg₁) n
