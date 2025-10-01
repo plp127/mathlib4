@@ -286,7 +286,6 @@ def Iso.homCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List
         ← incrementBVars_incrementBVars_of_ge _ (Nat.one_le_of_lt Nat.two_pos),
         ← incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
         incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1), instantiate_incrementBVars]
-      exact rfl
     · exact ((target.sati.incrementBVars [target₂] (.hom source₁ target₁)
           1 (Eq.refl 1)).incrementBVars [target₂] source₁ 1 (Eq.refl 1)).instantiate []
         (.instantiate [source₁]
@@ -309,7 +308,6 @@ def Iso.homCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List
         if_neg (Nat.add_one_ne_zero 1), if_pos (Nat.lt_add_one_of_le (Nat.zero_le 1)),
         incrementBVars_incrementBVars_of_ge source.inv (Nat.le_refl 1),
         ← incrementBVars_instantiate_of_le _ _ (Nat.zero_le 1)]
-      exact rfl
     · exact ((target.sati.incrementBVars [target₂] (.hom source₁ target₁)
         1 (Eq.refl 1)).incrementBVars [target₂] source₁ 1 (Eq.refl 1)).instantiate []
           (((target.sath.incrementBVars [target₁] (.hom source₁ target₁)
@@ -325,7 +323,6 @@ def Iso.homCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List
     case eq =>
       rw [← instantiate_incrementBVars_assoc, incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
         ← incrementBVars_instantiate_of_le _ _ (Nat.zero_le 1)]
-      exact rfl
     · exact ((((target.sati.incrementBVars [target₂] target₁ 1 (Eq.refl 1)).instantiate []
         target.sath 0 (Eq.refl 0)).incrementBVars [target₁] (.hom source₁ target₁)
           1 (Eq.refl 1)).incrementBVars [target₁] source₁ 1 (Eq.refl 1)).instantiate []
@@ -343,7 +340,6 @@ def Iso.homCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List
         ← incrementBVars_incrementBVars_of_ge _ (Nat.one_le_of_lt Nat.two_pos),
         ← incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
         incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1), instantiate_incrementBVars]
-      exact rfl
     · exact ((target.sath.incrementBVars [target₁] (.hom source₂ target₂)
           1 (Eq.refl 1)).incrementBVars [target₁] source₂ 1 (Eq.refl 1)).instantiate []
         (.instantiate [source₂]
@@ -366,7 +362,6 @@ def Iso.homCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List
         if_neg (Nat.add_one_ne_zero 1), if_pos (Nat.lt_add_one_of_le (Nat.zero_le 1)),
         incrementBVars_incrementBVars_of_ge source.hom (Nat.le_refl 1),
         ← incrementBVars_instantiate_of_le _ _ (Nat.zero_le 1)]
-      exact rfl
     · exact ((target.sath.incrementBVars [target₁] (.hom source₂ target₂)
         1 (Eq.refl 1)).incrementBVars [target₁] source₂ 1 (Eq.refl 1)).instantiate []
           (((target.sati.incrementBVars [target₂] (.hom source₂ target₂)
@@ -382,7 +377,6 @@ def Iso.homCongr {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List
     case eq =>
       rw [← instantiate_incrementBVars_assoc, incrementBVars_incrementBVars_of_ge _ (Nat.le_refl 1),
         ← incrementBVars_instantiate_of_le _ _ (Nat.zero_le 1)]
-      exact rfl
     · exact ((((target.sath.incrementBVars [target₁] target₂ 1 (Eq.refl 1)).instantiate []
         target.sati 0 (Eq.refl 0)).incrementBVars [target₂] (.hom source₂ target₂)
           1 (Eq.refl 1)).incrementBVars [target₂] source₂ 1 (Eq.refl 1)).instantiate []
