@@ -489,6 +489,71 @@ theorem detelescopeInterpretation_interpretZero {ι : Type u} (f : ι →₀ Nat
 --   | nil => rfl
 --   | cons _ _ ih => exact congrFun (ih (.hom _ tt) args.2) args.1
 
+def interpretSingleObject {ι : Type u} [DecidableEq ι] (t : Objectu ι) : ι →₀ Nat where
+  toFun := Pi.single t.splitArrows.2 1
+  support := {t.splitArrows.2}
+  mem_support_toFun := by simp [Pi.single_apply]
+
+theorem splitArrows_eq_of_foldl_eq {ι : Type u} (l : List (Object ι)) (t₁ t₂ : Objectu ι)
+    (h : List.foldl (fun t s => .hom s t) t₁.toObject₀.toObject l = t₂.toObject₀.toObject) :
+    t₁.splitArrows.2 = t₂.splitArrows.2 := by
+  rw [← List.foldr_reverse] at h
+  generalize l.reverse = k at h
+  induction k generalizing t₂ with
+  | nil =>
+    exact congrArg (fun t => t.splitArrows.2)
+      (Objectu.toObject₀_injective (Object₀.toObject_injective h))
+  | cons _ _ ih =>
+    cases t₂ with
+    | of => cases h
+    | hom s t => exact ih t (Object.hom.inj h).2
+
+def readSingleFVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
+    {ζ : κ → Objectu ι} {ctx : List (Object ι)} {t : Objectu ι}
+    (v : Neutralu (fun k => (ζ k).toObject₀.toObject) ctx t.toObject₀.toObject)
+    (k : κ) : (ζ k).toObject₀.toObject.read fun u => Fin (2 ^ interpretSingleObject t u) :=
+  if h : ∃ h : (List.foldl (fun t s ↦ s.hom t) t.toObject₀.toObject v.telescope.1) =
+      (ζ k).toObject₀.toObject, h ▸ v.telescope.2.2 = Neutralu.of k ctx then
+    interpretOne (interpretSingleObject t) (ζ k) (Finsupp.mem_support_iff.mp
+      (Finset.mem_singleton.mpr (splitArrows_eq_of_foldl_eq _ _ _ h.1).symm))
+  else interpretZero (interpretSingleObject t) (ζ k).toObject₀.toObject
+
+def readSingleBVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
+    {ζ : κ → Object ι} {ctx : List (Objectu ι)} {t : Objectu ι}
+    (v : Neutralu ζ (ctx.map fun t => t.toObject₀.toObject) t.toObject₀.toObject) :
+    (ctx.map fun t => t.toObject₀.toObject).TProd
+      (Object.read fun u => Fin (2 ^ interpretSingleObject t u)) :=
+  .ofFn (ctx.map fun t => t.toObject₀.toObject) fun n =>
+    if h : ∃ h : (List.foldl (fun t s ↦ s.hom t) t.toObject₀.toObject v.telescope.1) =
+        ctx[n].toObject₀.toObject,
+        h ▸ v.telescope.2.2 = Neutralu.bvar n ctx[n].toObject₀.toObject (by grind) then
+      List.getElem_map _ ▸
+        interpretOne (interpretSingleObject t) ctx[n] (Finsupp.mem_support_iff.mp
+          (Finset.mem_singleton.mpr (splitArrows_eq_of_foldl_eq _ _ _ h.1).symm))
+    else interpretZero (interpretSingleObject t) (ctx.map fun t => t.toObject₀.toObject)[n]
+
+def Neutralu.separateHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
+    {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t : Objectu ι}
+    (u v : Neutralu (fun k => (ζ k).toObject₀.toObject)
+      (ctx.map fun t => t.toObject₀.toObject) t.toObject₀.toObject)
+    (huv : ∀ h : u.telescope.1 = v.telescope.1, h ▸ u.telescope.2.2 ≠ v.telescope.2.2) :
+    Separation (fun u => Fin (2 ^ interpretSingleObject t u))
+      (u.toNeutral.toLambdaTerm.read (fun u => Fin (2 ^ interpretSingleObject t u))
+        (readSingleFVarHead v) (ctx.map fun t => t.toObject₀.toObject)
+        (readSingleBVarHead v) t.toObject₀.toObject u.toNeutral.toTyping)
+      (v.toNeutral.toLambdaTerm.read (fun u => Fin (2 ^ interpretSingleObject t u))
+        (readSingleFVarHead v) (ctx.map fun t => t.toObject₀.toObject)
+        (readSingleBVarHead v) t.toObject₀.toObject v.toNeutral.toTyping) :=
+  (castInterpretZeroOneSeparation (interpretSingleObject t)
+    t.toObject₀.toObject t.toObject₀.toObject t (Finsupp.mem_support_iff.mp
+      (Finset.mem_singleton_self t.splitArrows.2)) rfl rfl).cast
+    sorry sorry
+
+
+
+#exit
+
+-------------
 def Neutralu.separateOf {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Objectu ι} {ctx : List (Object ι)} (op : List (Objectu ι))
     (cop : (op.map fun t => t.toObject₀.toObject).TProd
