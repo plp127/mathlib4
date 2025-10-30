@@ -620,7 +620,6 @@ theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : T
     rw [LambdaTerm.read, readSingleFVarHead]
     symm
     apply dif_pos
-    clear hut
     rw [← v.detelescope_telescope] at hc
     generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
     clear v
@@ -628,7 +627,26 @@ theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : T
     | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
     | cons => cases hc
   | app fn arg ihf iha => sorry
-  | bvar deBruijnIndex => sorry
+  | bvar deBruijnIndex =>
+    have tc := v.toNeutral.toTyping
+    have (eq := hut) ut := t.toObject₀.toObject
+    rw [← hc, ← hut] at tc
+    rw [Subsingleton.elim v.toNeutral.toTyping (hc ▸ hut ▸ tc)]
+    cases hut
+    cases tc
+    obtain ⟨h, ht⟩ := List.getElem?_eq_some_iff.1 (Option.mem_def.1 ‹_›)
+    rewrite! (castMode := .all) [← hc, ← ht]
+    rw [LambdaTerm.read, readSingleBVarHead, List.TProd.get_ofFn _ _ ⟨deBruijnIndex, h⟩]
+    symm
+    cases Objectu.toObject₀_injective (Object₀.toObject_injective
+      ((List.getElem_map fun t : Objectu ι => t.toObject₀.toObject).symm.trans ht))
+    apply dif_pos
+    rw [← v.detelescope_telescope] at hc
+    generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
+    clear v
+    cases typs with
+    | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
+    | cons => cases hc
   | _ =>
     exfalso
     clear *-hc
