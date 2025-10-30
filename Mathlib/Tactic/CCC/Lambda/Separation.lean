@@ -532,6 +532,31 @@ def readSingleBVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq
           (Finset.mem_singleton.mpr (splitArrows_eq_of_foldl_eq _ _ _ h.1).symm))
     else interpretZero (interpretSingleObject t) (ctx.map fun t => t.toObject₀.toObject)[n]
 
+theorem Neutralu.separateHead.extracted_1 {ι : Type u} [DecidableEq ι] {κ : Type v}
+    [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t : Objectu ι}
+    (u v : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
+      (List.map (fun t ↦ t.toObject₀.toObject) ctx) t.toObject₀.toObject)
+    (huv : ∀ (h : u.telescope.fst = v.telescope.fst), h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2) :
+    interpretZero (interpretSingleObject t) t.toObject₀.toObject =
+      LambdaTerm.read (fun u ↦ Fin (2 ^ (interpretSingleObject t) u)) (readSingleFVarHead v)
+        (List.map (fun t ↦ t.toObject₀.toObject) ctx) (readSingleBVarHead v)
+          u.toNeutral.toLambdaTerm t.toObject₀.toObject
+        u.toNeutral.toTyping := by
+  sorry
+
+theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : Type v}
+    [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t : Objectu ι}
+    (u v : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
+      (List.map (fun t ↦ t.toObject₀.toObject) ctx) t.toObject₀.toObject)
+    (huv : ∀ (h : u.telescope.fst = v.telescope.fst), h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2) :
+    interpretOne (interpretSingleObject t) t (Finsupp.mem_support_iff.mp
+      (Finset.mem_singleton_self t.splitArrows.2)) =
+      LambdaTerm.read (fun u ↦ Fin (2 ^ (interpretSingleObject t) u)) (readSingleFVarHead v)
+        (List.map (fun t ↦ t.toObject₀.toObject) ctx)
+          (readSingleBVarHead v) v.toNeutral.toLambdaTerm t.toObject₀.toObject
+        v.toNeutral.toTyping := by
+  sorry
+
 def Neutralu.separateHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t : Objectu ι}
     (u v : Neutralu (fun k => (ζ k).toObject₀.toObject)
@@ -547,7 +572,7 @@ def Neutralu.separateHead {ι : Type u} [DecidableEq ι] {κ : Type v} [Decidabl
   (castInterpretZeroOneSeparation (interpretSingleObject t)
     t.toObject₀.toObject t.toObject₀.toObject t (Finsupp.mem_support_iff.mp
       (Finset.mem_singleton_self t.splitArrows.2)) rfl rfl).cast
-    sorry sorry
+    (Neutralu.separateHead.extracted_1 u v huv) (Neutralu.separateHead.extracted_3 u v huv)
 
 
 
