@@ -626,10 +626,7 @@ theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : T
     clear v
     cases typs with
     | cons => cases hc
-    | nil =>
-      refine ⟨rfl, ?_⟩
-      refine Neutralu.toNeutral_injective ?_
-      dsimp [Neutralu.toNeutral]
+    | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
   | app fn arg ihf iha => sorry
   | bvar deBruijnIndex => sorry
   | _ =>
