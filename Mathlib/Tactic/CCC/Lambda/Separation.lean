@@ -184,6 +184,61 @@ def Neutralu.toNeutral {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
 
 end
 
+mutual
+
+def Normalu.toNormal_injective {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {typ : Object ι} : (@Normalu.toNormal ι κ ζ ctx typ).Injective :=
+  fun a b hab =>
+    match a, b with
+    | .ofNeutral _, .ofNeutral _ =>
+      congrArg Normalu.ofNeutral (Neutralu.toNeutral_injective (Normal.ofNeutral.inj hab))
+    | .lam _ _, .lam _ _ =>
+      congrArg (Normalu.lam _) (Normalu.toNormal_injective (Normal.lam.inj hab))
+
+def Neutralu.toNeutral_injective {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {typ : Object ι} : (@Neutralu.toNeutral ι κ ζ ctx typ).Injective :=
+  fun a b hab =>
+    match typ, a with
+    | _, .of k₁ _=>
+        @id (∀ (t : Object ι) (ht : ζ k₁ = t) (b : Neutralu ζ ctx t)
+          (hb : ht ▸ Neutral.of k₁ ctx = b.toNeutral),
+          Neutralu.of k₁ ctx = ht ▸ b) (fun t ht b hb =>
+            match t, b with
+            | _, .of k₂ _ => by
+              let f {ctx : List (Object ι)} {typ : Object ι} (t : Neutral ζ ctx typ) : Option κ :=
+                Neutral.rec
+                  (motive_1 := fun _ _ _ => PUnit)
+                  (motive_2 := fun _ _ _ => Option κ)
+                  (ofNeutral := fun _ _ => .unit)
+                  (lam := fun _ _ _ _ => .unit)
+                  (unit := fun _ => .unit)
+                  (prod := fun _ _ _ _ => .unit)
+                  (of := fun k _ => some k)
+                  (app := fun _ _ _ _ => none)
+                  (left := fun _ _ => none)
+                  (right := fun _ _ => none)
+                  (bvar := fun _ _ _ => none) t
+              have hf := congrArg f hb
+              change _ = some k₂ at hf
+              rewrite! [← ht] at hf
+              cases Option.some.inj hf
+              rfl
+            | _, .bvar _ _ _
+            | _, .app _ _ => by cases ht; exact Neutral.noConfusion hb
+          ) (ζ k₁) rfl b hab
+    | _, .bvar n _ _ =>
+      match b with
+      | .bvar _ _ _ => by cases Neutral.bvar.inj hab; rfl
+    | _, .app _ _ =>
+      match b with
+      | .app _ _ => by
+        cases (Neutral.app.inj hab).1
+        exact congr (congrArg Neutralu.app
+          (Neutralu.toNeutral_injective (Neutral.app.inj hab).2.1.eq))
+          (Normalu.toNormal_injective (Neutral.app.inj hab).2.2.eq)
+
+end
+
 def extendI {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) : ι →₀ Nat where
   toFun := Function.update f i (f i + 1)
   support := if h : f i = 0 then f.support.cons i (f.notMem_support_iff.2 h) else f.support
@@ -546,16 +601,43 @@ theorem Neutralu.separateHead.extracted_1 {ι : Type u} [DecidableEq ι] {κ : T
 
 theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : Type v}
     [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t : Objectu ι}
-    (u v : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
-      (List.map (fun t ↦ t.toObject₀.toObject) ctx) t.toObject₀.toObject)
-    (huv : ∀ (h : u.telescope.fst = v.telescope.fst), h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2) :
+    (v : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
+      (List.map (fun t ↦ t.toObject₀.toObject) ctx) t.toObject₀.toObject) :
     interpretOne (interpretSingleObject t) t (Finsupp.mem_support_iff.mp
       (Finset.mem_singleton_self t.splitArrows.2)) =
       LambdaTerm.read (fun u ↦ Fin (2 ^ (interpretSingleObject t) u)) (readSingleFVarHead v)
         (List.map (fun t ↦ t.toObject₀.toObject) ctx)
           (readSingleBVarHead v) v.toNeutral.toLambdaTerm t.toObject₀.toObject
         v.toNeutral.toTyping := by
-  sorry
+  have (eq := hc) c := v.toNeutral.toLambdaTerm
+  induction c with
+  | of k =>
+    have tc := v.toNeutral.toTyping
+    have (eq := hut) ut := t.toObject₀.toObject
+    rw [← hc, ← hut] at tc
+    rw [Subsingleton.elim v.toNeutral.toTyping (hc ▸ hut ▸ tc)]
+    cases tc
+    cases Objectu.toObject₀_injective (Object₀.toObject_injective hut)
+    rewrite! [← hc]
+    rw [LambdaTerm.read, readSingleFVarHead]
+    symm
+    apply dif_pos
+    clear hut
+    rw [← v.detelescope_telescope] at hc
+    generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
+    clear v
+    cases typs with
+    | cons => cases hc
+    | nil =>
+      refine ⟨rfl, ?_⟩
+      refine Neutralu.toNeutral
+  | app fn arg ihf iha => sorry
+  | bvar deBruijnIndex => sorry
+  | _ =>
+    exfalso
+    clear *-hc
+    generalize t.toObject₀.toObject = ut at v
+    cases v <;> cases hc
 
 def Neutralu.separateHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t : Objectu ι}
@@ -572,7 +654,7 @@ def Neutralu.separateHead {ι : Type u} [DecidableEq ι] {κ : Type v} [Decidabl
   (castInterpretZeroOneSeparation (interpretSingleObject t)
     t.toObject₀.toObject t.toObject₀.toObject t (Finsupp.mem_support_iff.mp
       (Finset.mem_singleton_self t.splitArrows.2)) rfl rfl).cast
-    (Neutralu.separateHead.extracted_1 u v huv) (Neutralu.separateHead.extracted_3 u v huv)
+    (Neutralu.separateHead.extracted_1 u v huv) (Neutralu.separateHead.extracted_3 v)
 
 
 
