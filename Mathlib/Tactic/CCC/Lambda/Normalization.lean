@@ -364,6 +364,45 @@ end
 
 mutual
 
+theorem Normal.toLambdaTerm_injective {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {typ : Object ι} : (@Normal.toLambdaTerm ι κ ζ ctx typ).Injective :=
+  fun a b hab =>
+    match a, b with
+    | .ofNeutral _, .ofNeutral _ =>
+      congrArg Normal.ofNeutral (Neutral.toLambdaTerm_injective hab)
+    | .lam _ _, .lam _ _ =>
+      congrArg (Normal.lam _) (Normal.toLambdaTerm_injective (LambdaTerm.lam.inj hab).2)
+    | .unit _, .unit _ => rfl
+    | .prod _ _, .prod _ _ =>
+      congrArg₂ Normal.prod
+        (Normal.toLambdaTerm_injective (LambdaTerm.prod.inj hab).1)
+        (Normal.toLambdaTerm_injective (LambdaTerm.prod.inj hab).2)
+
+theorem Neutral.toLambdaTerm_injective {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {typ : Object ι} : (@Neutral.toLambdaTerm ι κ ζ ctx typ).Injective :=
+  fun a b hab =>
+    match typ, a with
+    | _, .of k₁ _ => sorry
+    | _, .app fn₁ arg₁ =>
+      match b with
+      | .app fn₂ arg₂ => by
+        stop
+        cases Neutral.toLambdaTerm_injective (LambdaTerm.app.inj hab).1
+        cases Normal.toLambdaTerm_injective (LambdaTerm.app.inj hab).2
+    | _, .left _ =>
+      match b with
+      | .left _ => sorry
+    | _, .right _ =>
+      match b with
+      | .right _ => sorry
+    | _, .bvar _ _ _ =>
+      match b with
+      | .bvar _ _ _ => by cases hab; rfl
+
+end
+
+mutual
+
 def Normal.incrementBVars {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (tot app : List (Object ι))
     {ctx : List (Object ι)} (tu : Object ι) {typ : Object ι} (t : Normal ζ tot typ)
     (n : Nat) (hn : app.length = n) (tt : app ++ ctx = tot) : Normal ζ (app ++ tu :: ctx) typ :=
