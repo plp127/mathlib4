@@ -625,8 +625,8 @@ theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : T
     generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
     clear v
     cases typs with
-    | cons => cases hc
     | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
+    | cons => cases hc
   | app fn arg ihf iha => sorry
   | bvar deBruijnIndex => sorry
   | _ =>
