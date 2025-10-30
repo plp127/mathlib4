@@ -186,7 +186,7 @@ end
 
 mutual
 
-def Normalu.toNormal_injective {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+theorem Normalu.toNormal_injective {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx : List (Object ι)} {typ : Object ι} : (@Normalu.toNormal ι κ ζ ctx typ).Injective :=
   fun a b hab =>
     match a, b with
@@ -195,7 +195,7 @@ def Normalu.toNormal_injective {ι : Type u} {κ : Type v} {ζ : κ → Object �
     | .lam _ _, .lam _ _ =>
       congrArg (Normalu.lam _) (Normalu.toNormal_injective (Normal.lam.inj hab))
 
-def Neutralu.toNeutral_injective {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+theorem Neutralu.toNeutral_injective {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx : List (Object ι)} {typ : Object ι} : (@Neutralu.toNeutral ι κ ζ ctx typ).Injective :=
   fun a b hab =>
     match typ, a with
@@ -221,14 +221,14 @@ def Neutralu.toNeutral_injective {ι : Type u} {κ : Type v} {ζ : κ → Object
               have hf := congrArg f hb
               change _ = some k₂ at hf
               rewrite! [← ht] at hf
-              cases Option.some.inj hf
+              cases hf
               rfl
             | _, .bvar _ _ _
             | _, .app _ _ => by cases ht; exact Neutral.noConfusion hb
           ) (ζ k₁) rfl b hab
     | _, .bvar n _ _ =>
       match b with
-      | .bvar _ _ _ => by cases Neutral.bvar.inj hab; rfl
+      | .bvar _ _ _ => by cases hab; rfl
     | _, .app _ _ =>
       match b with
       | .app _ _ => by
@@ -630,7 +630,8 @@ theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : T
     | cons => cases hc
     | nil =>
       refine ⟨rfl, ?_⟩
-      refine Neutralu.toNeutral
+      refine Neutralu.toNeutral_injective ?_
+      dsimp [Neutralu.toNeutral]
   | app fn arg ihf iha => sorry
   | bvar deBruijnIndex => sorry
   | _ =>
