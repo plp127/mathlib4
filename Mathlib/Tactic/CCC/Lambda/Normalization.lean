@@ -382,19 +382,109 @@ theorem Neutral.toLambdaTerm_injective {ι : Type u} {κ : Type v} {ζ : κ → 
     {ctx : List (Object ι)} {typ : Object ι} : (@Neutral.toLambdaTerm ι κ ζ ctx typ).Injective :=
   fun a b hab =>
     match typ, a with
-    | _, .of k₁ _ => sorry
+    | _, .of k₁ _ =>
+      @id (∀ (t : Object ι) (ht : ζ k₁ = t) (b : Neutral ζ ctx t)
+        (hb : LambdaTerm.of k₁ = b.toLambdaTerm),
+        Neutral.of k₁ ctx = ht ▸ b) (fun t ht b hb =>
+          match t, b with
+          | _, .of k₂ _ => by
+            have teq := Subsingleton.elim
+              (hb ▸ ht ▸ @id (Typing _ _ (.of k₁) (ζ k₁)) (Neutral.toTyping (.of k₁ _)))
+              (Neutral.toTyping (.of k₂ _))
+            dsimp only [Neutral.toTyping] at teq
+            let f {ctx : List (Object ι)} {term : LambdaTerm ι κ} {typ : Object ι}
+                (t : Typing ζ ctx term typ) : Option κ :=
+              Typing.rec
+                (motive := fun _ _ _ _ => Option κ)
+                (of := fun k _ => some k)
+                (unit := fun _ => none)
+                (prod := fun _ _ _ _ => none)
+                (lam := fun _ _ => none)
+                (app := fun _ _ _ _ => none)
+                (left := fun _ _ => none)
+                (right := fun _ _ => none)
+                (bvar := fun _ _ _ => none) t
+            have hf := congrArg f teq
+            change _ = some _ at hf
+            dsimp only [Neutral.toLambdaTerm] at hb hf
+            rewrite! (castMode := .all) [← ht, ← hb] at hf
+            cases hf
+            rfl
+        ) (ζ k₁) rfl b hab
     | _, .app fn₁ arg₁ =>
       match b with
       | .app fn₂ arg₂ => by
-        stop
-        cases Neutral.toLambdaTerm_injective (LambdaTerm.app.inj hab).1
-        cases Normal.toLambdaTerm_injective (LambdaTerm.app.inj hab).2
-    | _, .left _ =>
+        have teq := Subsingleton.elim
+          (hab ▸ Neutral.toTyping (.app fn₁ arg₁))
+          (Neutral.toTyping (.app fn₂ arg₂))
+        dsimp only [Neutral.toTyping] at teq
+        let f {ctx : List (Object ι)} {term : LambdaTerm ι κ} {typ : Object ι}
+            (t : Typing ζ ctx term typ) : Option (Object ι) :=
+          Typing.rec
+            (motive := fun _ _ _ _ => Option (Object ι))
+            (of := fun _ _ => none)
+            (unit := fun _ => none)
+            (prod := fun _ _ _ _ => none)
+            (lam := fun _ _ => none)
+            (app := fun {_ _ _ typed _} _ _ _ _ => some typed)
+            (left := fun _ _ => none)
+            (right := fun _ _ => none)
+            (bvar := fun _ _ _ => none) t
+        have hf := congrArg f teq
+        change _ = some _ at hf
+        rewrite! [← hab] at hf
+        cases hf
+        exact congrArg₂ Neutral.app
+          (Neutral.toLambdaTerm_injective (LambdaTerm.app.inj hab).1)
+          (Normal.toLambdaTerm_injective (LambdaTerm.app.inj hab).2)
+    | _, .left l₁ =>
       match b with
-      | .left _ => sorry
-    | _, .right _ =>
+      | .left l₂ => by
+        have teq := Subsingleton.elim
+          (hab ▸ Neutral.toTyping (.left l₁))
+          (Neutral.toTyping (.left l₂))
+        dsimp only [Neutral.toTyping] at teq
+        let f {ctx : List (Object ι)} {term : LambdaTerm ι κ} {typ : Object ι}
+            (t : Typing ζ ctx term typ) : Option (Object ι) :=
+          Typing.rec
+            (motive := fun _ _ _ _ => Option (Object ι))
+            (of := fun _ _ => none)
+            (unit := fun _ => none)
+            (prod := fun _ _ _ _ => none)
+            (lam := fun _ _ => none)
+            (app := fun _ _ _ _ => none)
+            (left := fun {_ _ _ right} _ _ => some right)
+            (right := fun _ _ => none)
+            (bvar := fun _ _ _ => none) t
+        have hf := congrArg f teq
+        change _ = some _ at hf
+        rewrite! [← hab] at hf
+        cases hf
+        exact congrArg Neutral.left (Neutral.toLambdaTerm_injective (LambdaTerm.left.inj hab))
+    | _, .right r₁ =>
       match b with
-      | .right _ => sorry
+      | .right r₂ => by
+        have teq := Subsingleton.elim
+          (hab ▸ Neutral.toTyping (.right r₁))
+          (Neutral.toTyping (.right r₂))
+        dsimp only [Neutral.toTyping] at teq
+        let f {ctx : List (Object ι)} {term : LambdaTerm ι κ} {typ : Object ι}
+            (t : Typing ζ ctx term typ) : Option (Object ι) :=
+          Typing.rec
+            (motive := fun _ _ _ _ => Option (Object ι))
+            (of := fun _ _ => none)
+            (unit := fun _ => none)
+            (prod := fun _ _ _ _ => none)
+            (lam := fun _ _ => none)
+            (app := fun _ _ _ _ => none)
+            (left := fun _ _ => none)
+            (right := fun {_ _ left _} _ _ => some left)
+            (bvar := fun _ _ _ => none) t
+        have hf := congrArg f teq
+        change _ = some _ at hf
+        rewrite! [← hab] at hf
+        cases hf
+        exact congrArg Neutral.right (Neutral.toLambdaTerm_injective (LambdaTerm.right.inj hab))
     | _, .bvar _ _ _ =>
       match b with
       | .bvar _ _ _ => by cases hab; rfl

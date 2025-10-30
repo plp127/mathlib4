@@ -223,8 +223,6 @@ theorem Neutralu.toNeutral_injective {ι : Type u} {κ : Type v} {ζ : κ → Ob
               rewrite! [← ht] at hf
               cases hf
               rfl
-            | _, .bvar _ _ _
-            | _, .app _ _ => by cases ht; exact Neutral.noConfusion hb
           ) (ζ k₁) rfl b hab
     | _, .bvar n _ _ =>
       match b with
