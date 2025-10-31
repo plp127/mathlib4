@@ -618,16 +618,141 @@ def Neutralu.uType {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι}
   | ctx, .bvar n typ sat => ⟨ctx[n]'(by grind), by grind⟩
 
 theorem Neutralu.separateHead.extracted_1 {ι : Type u} [DecidableEq ι] {κ : Type v}
-    [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t : Objectu ι}
-    (u v : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
-      (List.map (fun t ↦ t.toObject₀.toObject) ctx) t.toObject₀.toObject)
-    (huv : ∀ (h : u.telescope.fst = v.telescope.fst), h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2) :
-    interpretZero (interpretSingleObject t) t.toObject₀.toObject =
-      LambdaTerm.read (fun u ↦ Fin (2 ^ (interpretSingleObject t) u)) (readSingleFVarHead v)
+    [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t₁ t₂ : Objectu ι}
+    (u : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
+      (List.map (fun t ↦ t.toObject₀.toObject) ctx) t₁.toObject₀.toObject)
+    (v : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
+      (List.map (fun t ↦ t.toObject₀.toObject) ctx) t₂.toObject₀.toObject)
+    (huv : ∀ (h : List.foldl (fun t s ↦ s.hom t) t₁.toObject₀.toObject u.telescope.fst =
+        List.foldl (fun t s ↦ s.hom t) t₂.toObject₀.toObject v.telescope.fst),
+        h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2) :
+    interpretZero (interpretSingleObject t₂) t₁.toObject₀.toObject =
+      LambdaTerm.read (fun u ↦ Fin (2 ^ (interpretSingleObject t₂) u)) (readSingleFVarHead v)
         (List.map (fun t ↦ t.toObject₀.toObject) ctx) (readSingleBVarHead v)
-          u.toNeutral.toLambdaTerm t.toObject₀.toObject
+          u.toNeutral.toLambdaTerm t₁.toObject₀.toObject
         u.toNeutral.toTyping := by
-  sorry
+  have (eq := hc) c := u.toNeutral.toLambdaTerm
+  induction c generalizing t₁ with
+  | of k =>
+    have tc := u.toNeutral.toTyping
+    have (eq := hut) ut := t₁.toObject₀.toObject
+    rw [← hc, ← hut] at tc
+    rw [Subsingleton.elim u.toNeutral.toTyping (hc ▸ hut ▸ tc)]
+    cases tc
+    cases Objectu.toObject₀_injective (Object₀.toObject_injective hut)
+    rewrite! [← hc]
+    rw [LambdaTerm.read, readSingleFVarHead]
+    symm
+    apply dif_neg
+    stop
+    rw [← v.detelescope_telescope] at hc
+    generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
+    cases typs with
+    | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
+    | cons => cases hc
+  | app fn arg ihf =>
+    have tc := u.toNeutral.toTyping
+    have (eq := hut) ut := t₁.toObject₀.toObject
+    rw [← hc, ← hut] at tc
+    rw [Subsingleton.elim u.toNeutral.toTyping (hc ▸ hut ▸ tc)]
+    cases hut
+    cases tc with | app satd sata
+    rewrite! [← hc]
+    obtain ⟨tf, uf, ua, rfl⟩ : ∃ tf : Objectu ι,
+        ∃ uf : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
+            (List.map (fun t : Objectu ι ↦ t.toObject₀.toObject) ctx)
+              (Objectu.hom tf t₁).toObject₀.toObject,
+          ∃ ua : Normalu (fun k ↦ (ζ k).toObject₀.toObject)
+              (List.map (fun t : Objectu ι ↦ t.toObject₀.toObject) ctx) tf.toObject₀.toObject,
+                u = .app uf ua := by
+      dsimp only [Objectu.toObject₀, Object₀.toObject]
+      clear huv
+      generalize hut : t₁.toObject₀.toObject = ut at u
+      cases u with
+      | app uf ua =>
+        obtain ⟨tu, htu⟩ := Neutralu.uType rfl uf
+        cases tu with
+        | hom =>
+          cases (Object.hom.inj htu).1
+          exact ⟨_, _, _, rfl⟩
+        | _ => cases htu
+      | _ => cases hc
+    cases hc
+    cases unique_typing sata ua.toNormal.toTyping
+    cases Subsingleton.elim satd uf.toNeutral.toTyping
+    cases Subsingleton.elim sata ua.toNormal.toTyping
+    stop
+    specialize ihf vf rfl
+    dsimp only [interpretSingleObject_hom, readSingleFVarHead_app, readSingleBVarHead_app,
+      Objectu.toObject₀, Object₀.toObject] at ihf ⊢
+    rw [LambdaTerm.read, ← ihf, interpretOne]
+  | bvar deBruijnIndex =>
+    have tc := u.toNeutral.toTyping
+    have (eq := hut) ut := t₁.toObject₀.toObject
+    rw [← hc, ← hut] at tc
+    rw [Subsingleton.elim u.toNeutral.toTyping (hc ▸ hut ▸ tc)]
+    cases hut
+    cases tc
+    obtain ⟨h, ht⟩ := List.getElem?_eq_some_iff.1 (Option.mem_def.1 ‹_›)
+    rewrite! (castMode := .all) [← hc, ← ht]
+    rw [LambdaTerm.read, readSingleBVarHead, List.TProd.get_ofFn _ _ ⟨deBruijnIndex, h⟩]
+    symm
+    cases Objectu.toObject₀_injective (Object₀.toObject_injective
+      ((List.getElem_map fun t : Objectu ι => t.toObject₀.toObject).symm.trans ht))
+    apply dif_neg
+    stop
+    rw [← v.detelescope_telescope] at hc
+    generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
+    cases typs with
+    | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
+    | cons => cases hc
+  | _ =>
+    exfalso
+    clear *-hc
+    generalize t₁.toObject₀.toObject = ut at u
+    cases u <;> cases hc
+
+theorem Neutralu.separateHead.extracted_2 {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι}
+    {ctx : List (Objectu ι)} {t : Object ι}
+    (u v : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
+      (List.map (fun t ↦ t.toObject₀.toObject) ctx) t)
+    (huv : ∀ (h : u.telescope.fst = v.telescope.fst), h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2)
+    (h : List.foldl (fun t s ↦ s.hom t) t u.telescope.fst =
+      List.foldl (fun t s ↦ s.hom t) t v.telescope.fst) :
+    h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2 := by
+  have tt : u.telescope.1 = v.telescope.1 := by
+    generalize u.telescope.1 = tu at h
+    generalize v.telescope.1 = tv at h
+    let f (o : Object ι) : Nat :=
+      Object.rec
+        (motive := fun _ => Nat)
+        (of := fun _ => 0)
+        (unit := 0)
+        (prod := fun _ _ _ _ => 0)
+        (hom := fun _ _ _ => Nat.succ) o
+    have hf (init : Object ι) (ul : List (Object ι)) :
+        f (ul.foldl (fun t s ↦ .hom s t) init) = f init + ul.length := by
+      induction ul generalizing init with
+      | nil => rfl
+      | cons _ _ ih => exact (ih (.hom _ init)).trans (Nat.add_right_comm _ 1 _)
+    induction tu using List.reverseRecOn generalizing tv with
+    | nil =>
+      cases tv with
+      | nil => rfl
+      | cons =>
+        have hh := congrArg f h
+        rw [hf, hf] at hh
+        simp at hh
+    | append_singleton _ _ ih =>
+      cases tv using List.reverseRecOn with
+      | nil =>
+        have hh := congrArg f h
+        rw [hf, hf] at hh
+        simp at hh
+      | append_singleton =>
+        rw [List.foldl_append, List.foldl_append] at h
+        rw [(Object.hom.inj h).1, ih _ (Object.hom.inj h).2]
+  grind only
 
 theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : Type v}
     [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t : Objectu ι}
@@ -731,7 +856,8 @@ def Neutralu.separateHead {ι : Type u} [DecidableEq ι] {κ : Type v} [Decidabl
   (castInterpretZeroOneSeparation (interpretSingleObject t)
     t.toObject₀.toObject t.toObject₀.toObject t (Finsupp.mem_support_iff.mp
       (Finset.mem_singleton_self t.splitArrows.2)) rfl rfl).cast
-    (Neutralu.separateHead.extracted_1 u v huv) (Neutralu.separateHead.extracted_3 v)
+    (Neutralu.separateHead.extracted_1 u v (Neutralu.separateHead.extracted_2 u v huv))
+      (Neutralu.separateHead.extracted_3 v)
 
 
 
