@@ -547,6 +547,10 @@ def interpretSingleObject {ι : Type u} [DecidableEq ι] (t : Objectu ι) : ι �
   support := {t.splitArrows.2}
   mem_support_toFun := by simp [Pi.single_apply]
 
+@[simp]
+theorem interpretSingleObject_hom {ι : Type u} [DecidableEq ι] (s t : Objectu ι) :
+    interpretSingleObject (.hom s t) = interpretSingleObject t := rfl
+
 theorem splitArrows_eq_of_foldl_eq {ι : Type u} (l : List (Object ι)) (t₁ t₂ : Objectu ι)
     (h : List.foldl (fun t s => .hom s t) t₁.toObject₀.toObject l = t₂.toObject₀.toObject) :
     t₁.splitArrows.2 = t₂.splitArrows.2 := by
@@ -571,6 +575,13 @@ def readSingleFVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq
       (Finset.mem_singleton.mpr (splitArrows_eq_of_foldl_eq _ _ _ h.1).symm))
   else interpretZero (interpretSingleObject t) (ζ k).toObject₀.toObject
 
+@[simp]
+theorem readSingleFVarHead_app {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
+    {ζ : κ → Objectu ι} {ctx : List (Object ι)} {typed t : Objectu ι}
+    (v : Neutralu (fun k => (ζ k).toObject₀.toObject) ctx (Objectu.hom typed t).toObject₀.toObject)
+    (a : Normalu (fun k => (ζ k).toObject₀.toObject) ctx typed.toObject₀.toObject) :
+    readSingleFVarHead (.app v a) = readSingleFVarHead v := rfl
+
 def readSingleBVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Object ι} {ctx : List (Objectu ι)} {t : Objectu ι}
     (v : Neutralu ζ (ctx.map fun t => t.toObject₀.toObject) t.toObject₀.toObject) :
@@ -584,6 +595,27 @@ def readSingleBVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq
         interpretOne (interpretSingleObject t) ctx[n] (Finsupp.mem_support_iff.mp
           (Finset.mem_singleton.mpr (splitArrows_eq_of_foldl_eq _ _ _ h.1).symm))
     else interpretZero (interpretSingleObject t) (ctx.map fun t => t.toObject₀.toObject)[n]
+
+@[simp]
+theorem readSingleBVarHead_app {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
+    {ζ : κ → Object ι} {ctx : List (Objectu ι)} {typed t : Objectu ι}
+    (v : Neutralu ζ (ctx.map fun t => t.toObject₀.toObject)
+      (Objectu.hom typed t).toObject₀.toObject)
+    (a : Normalu ζ (ctx.map fun t => t.toObject₀.toObject) typed.toObject₀.toObject) :
+    @readSingleBVarHead ι _ κ _ ζ ctx t (.app v a) =
+      @readSingleBVarHead ι _ κ _ ζ ctx (.hom typed t) v := rfl
+
+def Neutralu.uType {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι}
+    {ctx : List (Objectu ι)} {ss : List (Object ι)} {typ : Object ι}
+    (eq : ctx.map (fun t => t.toObject₀.toObject) = ss)
+    (t : Neutralu (fun k => (ζ k).toObject₀.toObject) ss typ) :
+    { tu : Objectu ι // tu.toObject₀.toObject = typ } :=
+  match ctx, t with
+  | _, .of k _ => ⟨ζ k, rfl⟩
+  | _, .app fn arg =>
+    match fn.uType eq with
+    | ⟨.hom _ target, h⟩ => ⟨target, (Object.hom.inj h).2⟩
+  | ctx, .bvar n typ sat => ⟨ctx[n]'(by grind), by grind⟩
 
 theorem Neutralu.separateHead.extracted_1 {ι : Type u} [DecidableEq ι] {κ : Type v}
     [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} {t : Objectu ι}
@@ -608,7 +640,7 @@ theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : T
           (readSingleBVarHead v) v.toNeutral.toLambdaTerm t.toObject₀.toObject
         v.toNeutral.toTyping := by
   have (eq := hc) c := v.toNeutral.toLambdaTerm
-  induction c with
+  induction c generalizing t with
   | of k =>
     have tc := v.toNeutral.toTyping
     have (eq := hut) ut := t.toObject₀.toObject
@@ -622,11 +654,43 @@ theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : T
     apply dif_pos
     rw [← v.detelescope_telescope] at hc
     generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
-    clear v
     cases typs with
     | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
     | cons => cases hc
-  | app fn arg ihf iha => sorry
+  | app fn arg ihf =>
+    have tc := v.toNeutral.toTyping
+    have (eq := hut) ut := t.toObject₀.toObject
+    rw [← hc, ← hut] at tc
+    rw [Subsingleton.elim v.toNeutral.toTyping (hc ▸ hut ▸ tc)]
+    cases hut
+    cases tc with | app satd sata
+    rewrite! [← hc]
+    obtain ⟨tf, vf, va, rfl⟩ : ∃ tf : Objectu ι,
+        ∃ vf : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
+            (List.map (fun t : Objectu ι ↦ t.toObject₀.toObject) ctx)
+              (Objectu.hom tf t).toObject₀.toObject,
+          ∃ va : Normalu (fun k ↦ (ζ k).toObject₀.toObject)
+              (List.map (fun t : Objectu ι ↦ t.toObject₀.toObject) ctx) tf.toObject₀.toObject,
+                v = .app vf va := by
+      dsimp only [Objectu.toObject₀, Object₀.toObject]
+      generalize hut : t.toObject₀.toObject = ut at v
+      cases v with
+      | app vf va =>
+        obtain ⟨tv, htv⟩ := Neutralu.uType rfl vf
+        cases tv with
+        | hom =>
+          cases (Object.hom.inj htv).1
+          exact ⟨_, _, _, rfl⟩
+        | _ => cases htv
+      | _ => cases hc
+    cases hc
+    cases unique_typing sata va.toNormal.toTyping
+    cases Subsingleton.elim satd vf.toNeutral.toTyping
+    cases Subsingleton.elim sata va.toNormal.toTyping
+    specialize ihf vf rfl
+    dsimp only [interpretSingleObject_hom, readSingleFVarHead_app, readSingleBVarHead_app,
+      Objectu.toObject₀, Object₀.toObject] at ihf ⊢
+    rw [LambdaTerm.read, ← ihf, interpretOne]
   | bvar deBruijnIndex =>
     have tc := v.toNeutral.toTyping
     have (eq := hut) ut := t.toObject₀.toObject
@@ -643,7 +707,6 @@ theorem Neutralu.separateHead.extracted_3 {ι : Type u} [DecidableEq ι] {κ : T
     apply dif_pos
     rw [← v.detelescope_telescope] at hc
     generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
-    clear v
     cases typs with
     | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
     | cons => cases hc
@@ -873,17 +936,6 @@ def Neutralu.separateBVar {ι : Type u} [DecidableEq ι] {κ : Type v} [Decidabl
       rewrite! (castMode := .all) [← htb]
       rw [List.TProd.get_ofFn _ _ ⟨n, hn⟩, Function.update_self]
 
-def Neutralu.uType {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι}
-    {ctx : List (Objectu ι)} {ss : List (Object ι)} {typ : Object ι}
-    (eq : ctx.map (fun t => t.toObject₀.toObject) = ss)
-    (t : Neutralu (fun k => (ζ k).toObject₀.toObject) ss typ) :
-    { tu : Objectu ι // tu.toObject₀.toObject = typ } :=
-  match ctx, t with
-  | _, .of k _ => ⟨ζ k, rfl⟩
-  | _, .app fn arg =>
-    match fn.uType eq with
-    | ⟨.hom _ target, h⟩ => ⟨target, (Object.hom.inj h).2⟩
-  | ctx, .bvar n typ sat => ⟨ctx[n]'(by grind), by grind⟩
 set_option debug.skipKernelTC true
 -- #exit
 -- #exit
