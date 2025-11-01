@@ -644,12 +644,11 @@ theorem Neutralu.separateHead.extracted_1 {ι : Type u} [DecidableEq ι] {κ : T
     rw [LambdaTerm.read, readSingleFVarHead]
     symm
     apply dif_neg
-    stop
-    rw [← v.detelescope_telescope] at hc
-    generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
-    cases typs with
-    | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
-    | cons => cases hc
+    intro ⟨h, hh⟩
+    obtain rfl : .of k _ = u := Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc)
+    apply huv h.symm
+    rewrite! (castMode := .all) [← h] at hh
+    exact hh.symm
   | app fn arg ihf =>
     have tc := u.toNeutral.toTyping
     have (eq := hut) ut := t₁.toObject₀.toObject
@@ -681,11 +680,10 @@ theorem Neutralu.separateHead.extracted_1 {ι : Type u} [DecidableEq ι] {κ : T
     cases unique_typing sata ua.toNormal.toTyping
     cases Subsingleton.elim satd uf.toNeutral.toTyping
     cases Subsingleton.elim sata ua.toNormal.toTyping
-    stop
-    specialize ihf vf rfl
+    specialize ihf uf huv rfl
     dsimp only [interpretSingleObject_hom, readSingleFVarHead_app, readSingleBVarHead_app,
       Objectu.toObject₀, Object₀.toObject] at ihf ⊢
-    rw [LambdaTerm.read, ← ihf, interpretOne]
+    rw [LambdaTerm.read, ← ihf, interpretZero]
   | bvar deBruijnIndex =>
     have tc := u.toNeutral.toTyping
     have (eq := hut) ut := t₁.toObject₀.toObject
@@ -700,12 +698,14 @@ theorem Neutralu.separateHead.extracted_1 {ι : Type u} [DecidableEq ι] {κ : T
     cases Objectu.toObject₀_injective (Object₀.toObject_injective
       ((List.getElem_map fun t : Objectu ι => t.toObject₀.toObject).symm.trans ht))
     apply dif_neg
-    stop
-    rw [← v.detelescope_telescope] at hc
-    generalize v.telescope.1 = typs, v.telescope.2.1 = args, v.telescope.2.2 = t at hc
-    cases typs with
-    | nil => exact ⟨rfl, Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc.symm)⟩
-    | cons => cases hc
+    intro ⟨he, hhe⟩
+    obtain rfl : .bvar deBruijnIndex _ ‹_› = u := by
+      exact Neutralu.toNeutral_injective (Neutral.toLambdaTerm_injective hc)
+    apply huv he.symm
+    rewrite! (castMode := .all) [← he] at hhe
+    refine (hhe.trans ?_).symm
+    rewrite! [he]
+    rfl
   | _ =>
     exfalso
     clear *-hc
