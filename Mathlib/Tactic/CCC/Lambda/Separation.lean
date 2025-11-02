@@ -1060,16 +1060,10 @@ unsafe def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
     | _, _, .of u _ =>
       letI l : List (Objectu ι) := by assumption
       haveI k := Neutralu.separateHead (ht₁ ▸ Neutralu.app fn₁ arg₁) (ht₂ ▸ Neutralu.of u _) <| by
-        stop
-        cases Objectu.toObject₀_injective (Object₀.toObject_injective ht₁)
-        cases ht₂
-        dsimp only [Neutralu.telescope, List.foldr_nil, List.foldl_nil]
-        intro he hhe
-        apply h
-        refine Eq.trans ?_ t₂.detelescope_telescope
-        generalize t₂.telescope.1 = typs, t₂.telescope.2.1 = args, t₂.telescope.2.2 = t at he
+        cases ht₁
+        cases Objectu.toObject₀_injective (Object₀.toObject_injective ht₂)
+        intro he
         cases he
-        exact hhe
       ⟨interpretSingleObject typ,
         readSingleFVarHead (ht₂ ▸ @Neutralu.of ι κ (fun k => (ζ k).toObject₀.toObject) u
           (l.map fun t : Objectu ι => t.toObject₀.toObject)),
