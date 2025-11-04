@@ -1075,36 +1075,37 @@ unsafe def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
     | _, _, .app fn₂ arg₂ =>
       if hcc : _ = _ then
         if hhc : (by exact hcc ▸ arg₁) = arg₂ then
-          match fn₂.uType hc with
+          match fn₂.uType with
           | ⟨.hom uTyp _, huTyp⟩ =>
-            haveI k := Neutralu.separate (op ++ [uTyp])
-                (List.TProd.castList List.map_append.symm
-                  (cop.append (((Object.hom.inj huTyp).1 ▸ arg₂ :), PUnit.unit)))
-              hc typ (.hom _ tt₁) (.hom _ _)
-              ((congrArg₂ Object.hom (hcc.trans (Object.hom.inj huTyp).1.symm) ht₁).trans (by simp))
-              ((congrArg₂ Object.hom (Object.hom.inj huTyp).1.symm ht₂).trans (by simp)) fn₁ fn₂
+            haveI k := Neutralu.separate (.hom uTyp typ) (.hom _ tt₁) (.hom _ _)
+              (congrArg₂ Object.hom (hcc.trans (Object.hom.inj huTyp).1.symm) ht₁)
+              (congrArg₂ Object.hom (Object.hom.inj huTyp).1.symm ht₂) fn₁ fn₂
               (fun hff => by
                 cases hcc; cases hhc; cases ht₁; cases ht₂
                 apply h
                 rw [← heq_iff_eq, eqRec_heq_iff, heq_eqRec_iff_heq] at hff
                 simpa using hff)
-            ⟨k.1, k.2.1, k.2.2.1, k.2.2.2.cast
-              (by
-                cases hcc; cases hhc; cases huTyp
+            ⟨k.1, k.2.1, k.2.2.1, by
+              refine k.2.2.2.cast ?_ ?_
+              · cases hcc; cases hhc; cases huTyp
+                stop
                 exact Neutralu.separate.extracted_5 op cop typ tt₁ ht₁ uTyp
-                  _ fn₁ arg₁ fn₂ _ _ _ k)
-              (by
+                  _ fn₁ arg₁ fn₂ _ _ _ k
+              ·
                 cases hcc; cases hhc; cases huTyp
+                stop
                 exact Neutralu.separate.extracted_6 op cop typ tt₁ ht₁ uTyp
-                  _ fn₁ arg₁ ht₂ fn₂ _ _ _ k)⟩
+                  _ fn₁ arg₁ ht₂ fn₂ _ _ _ k⟩
         else sorry
       else sorry
-    | ctx, _, .bvar n tb sat => Eq.rec
+    | ctx, _, .bvar n tb sat => by stop
+    exact Eq.rec
       (fun hct hh => by
         exact Neutralu.separateBVar op cop (.app fn₁ arg₁) n
           (ctx[n]'(by grind)) hh ht₁ hct (by grind))
       (show (ctx[n]'(by grind)).toObject₀.toObject = tb by grind) ht₂ sat
-  | ctx, _, .bvar n tb sat =>
+  | ctx, _, .bvar n tb sat => by stop
+  exact
     haveI kk (hct : (ctx[n]'(by grind)).toObject₀.toObject =
         (op.map fun t => t.toObject₀.toObject).foldl (fun t s => .hom s t) typ.toObject₀.toObject)
         (hh : (ctx[n]'(by grind)).toObject₀.toObject ∈ ss[n]?) :=
