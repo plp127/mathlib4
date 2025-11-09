@@ -1045,82 +1045,19 @@ unsafe def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
       (((ht₂ ▸ t₂).detelescope (ss.map _) as).toNeutral.toLambdaTerm.read
         (fun u => Fin (2 ^ f u)) rk (ctx.map _) ci (.of i)
           ((ht₂ ▸ t₂).detelescope (ss.map _) as).toNeutral.toTyping) :=
-by stop exact
   match ctx, typ₁, t₁ with
-  | _, _, .of u _ =>
-    haveI k := Neutralu.separateHead (ht₁ ▸ .of u _) (ht₂ ▸ t₂) <| by
-      cases Objectu.toObject₀_injective (Object₀.toObject_injective ht₁)
-      cases ht₂
-      dsimp only [Neutralu.telescope, List.foldr_nil, List.foldl_nil]
-      intro he hhe
-      apply h
-      refine Eq.trans ?_ t₂.detelescope_telescope
-      generalize t₂.telescope.1 = typs, t₂.telescope.2.1 = args, t₂.telescope.2.2 = t at he
-      cases he
-      exact hhe
-    ⟨interpretSingleObject typ, readSingleFVarHead (ht₂ ▸ t₂), readSingleBVarHead (ht₂ ▸ t₂),
-      k.cast
-        (by cases Objectu.toObject₀_injective (Object₀.toObject_injective ht₁); rfl)
-        (by cases ht₂; rfl)⟩
+  | _, _, .of _ _
+  | _, _, .bvar _ _ _ => False.elim <| by
+    apply h
+    rw [← t₂.detelescope_telescope]
+    generalize t₂.telescope.1 = typs, t₂.telescope.2.1 = args, t₂.telescope.2.2 = t at ht
+    cases ht.1; cases ht₂
+    exact ht.2
   | ctx, tt₁, .app fn₁ arg₁ =>
     match ctx, typ₂, t₂ with
-    | _, _, .of u _ =>
-      letI l : List (Objectu ι) := by assumption
-      haveI k := Neutralu.separateHead (ht₁ ▸ Neutralu.app fn₁ arg₁) (ht₂ ▸ Neutralu.of u _) <| by
-        cases ht₁
-        cases Objectu.toObject₀_injective (Object₀.toObject_injective ht₂)
-        intro he
-        cases he
-      ⟨interpretSingleObject typ,
-        readSingleFVarHead (ht₂ ▸ @Neutralu.of ι κ (fun k => (ζ k).toObject₀.toObject) u
-          (l.map fun t : Objectu ι => t.toObject₀.toObject)),
-        (readSingleBVarHead (ht₂ ▸ @Neutralu.of ι κ (fun k => (ζ k).toObject₀.toObject) u
-          (l.map fun t : Objectu ι => t.toObject₀.toObject)) :),
-        k.cast
-          (by cases ht₁; rfl)
-          (by cases Objectu.toObject₀_injective (Object₀.toObject_injective ht₂); rfl)⟩
-    | _, _, .app fn₂ arg₂ =>
-      if hcc : _ = _ then
-        if hhc : (by exact hcc ▸ arg₁) = arg₂ then
-          match fn₂.uType with
-          | ⟨.hom uTyp _, huTyp⟩ =>
-            haveI k := Neutralu.separate (.hom uTyp typ) (.hom _ tt₁) (.hom _ _)
-              (congrArg₂ Object.hom (hcc.trans (Object.hom.inj huTyp).1.symm) ht₁)
-              (congrArg₂ Object.hom (Object.hom.inj huTyp).1.symm ht₂) fn₁ fn₂
-              (fun hff => by
-                cases hcc; cases hhc; cases ht₁; cases ht₂
-                apply h
-                rw [← heq_iff_eq, eqRec_heq_iff, heq_eqRec_iff_heq] at hff
-                simpa using hff)
-            ⟨k.1, k.2.1, k.2.2.1, by
-              refine k.2.2.2.cast ?_ ?_
-              · cases hcc; cases hhc; cases huTyp
-                stop
-                exact Neutralu.separate.extracted_5 op cop typ tt₁ ht₁ uTyp
-                  _ fn₁ arg₁ fn₂ _ _ _ k
-              ·
-                cases hcc; cases hhc; cases huTyp
-                stop
-                exact Neutralu.separate.extracted_6 op cop typ tt₁ ht₁ uTyp
-                  _ fn₁ arg₁ ht₂ fn₂ _ _ _ k⟩
-        else sorry
-      else sorry
-    | ctx, _, .bvar n tb sat => by stop
-    exact Eq.rec
-      (fun hct hh => by
-        exact Neutralu.separateBVar op cop (.app fn₁ arg₁) n
-          (ctx[n]'(by grind)) hh ht₁ hct (by grind))
-      (show (ctx[n]'(by grind)).toObject₀.toObject = tb by grind) ht₂ sat
-  | ctx, _, .bvar n tb sat => by stop
-  exact
-    haveI kk (hct : (ctx[n]'(by grind)).toObject₀.toObject =
-        (op.map fun t => t.toObject₀.toObject).foldl (fun t s => .hom s t) typ.toObject₀.toObject)
-        (hh : (ctx[n]'(by grind)).toObject₀.toObject ∈ ss[n]?) :=
-      Neutralu.separateBVar op cop t₂ n (ctx[n]'(by grind)) hh ht₂ hct (by grind)
-    Eq.rec (fun hct hh =>
-        haveI k := kk hct hh
-        ⟨k.1, k.2.1, k.2.2.1, by exact k.2.2.2.symm⟩)
-      (show (ctx[n]'(by grind)).toObject₀.toObject = tb by grind) ht₁ sat
+    | _, _, .of _ _
+    | _, _, .bvar _ _ _ => False.elim (by cases ht.1)
+    | _, _, .app fn₂ arg₂ => sorry
 termination_by ι
 decreasing_by all_goals sorry
 
