@@ -709,7 +709,6 @@ theorem Neutralu.separateHead.extracted_2 {ι : Type u} {κ : Type v} {ζ : κ �
     generalize v.telescope.1 = tv at h
     let f (o : Object ι) : Nat :=
       Object.rec
-        (motive := fun _ => Nat)
         (of := fun _ => 0)
         (unit := 0)
         (prod := fun _ _ _ _ => 0)
