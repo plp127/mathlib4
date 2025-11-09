@@ -394,16 +394,15 @@ theorem Neutral.toLambdaTerm_injective {ι : Type u} {κ : Type v} {ζ : κ → 
             dsimp only [Neutral.toTyping] at teq
             let f {ctx : List (Object ι)} {term : LambdaTerm ι κ} {typ : Object ι}
                 (t : Typing ζ ctx term typ) : Option κ :=
-              Typing.rec
-                (motive := fun _ _ _ _ => Option κ)
+              t.casesOn
                 (of := fun k _ => some k)
                 (unit := fun _ => none)
-                (prod := fun _ _ _ _ => none)
-                (lam := fun _ _ => none)
-                (app := fun _ _ _ _ => none)
-                (left := fun _ _ => none)
-                (right := fun _ _ => none)
-                (bvar := fun _ _ _ => none) t
+                (prod := fun _ _ => none)
+                (lam := fun _ => none)
+                (app := fun _ _ => none)
+                (left := fun _ => none)
+                (right := fun _ => none)
+                (bvar := fun _ _ _ => none)
             have hf := congrArg f teq
             change _ = some _ at hf
             dsimp only [Neutral.toLambdaTerm] at hb hf
@@ -420,16 +419,15 @@ theorem Neutral.toLambdaTerm_injective {ι : Type u} {κ : Type v} {ζ : κ → 
         dsimp only [Neutral.toTyping] at teq
         let f {ctx : List (Object ι)} {term : LambdaTerm ι κ} {typ : Object ι}
             (t : Typing ζ ctx term typ) : Option (Object ι) :=
-          Typing.rec
-            (motive := fun _ _ _ _ => Option (Object ι))
+          t.casesOn
             (of := fun _ _ => none)
             (unit := fun _ => none)
-            (prod := fun _ _ _ _ => none)
-            (lam := fun _ _ => none)
-            (app := fun {_ _ _ typed _} _ _ _ _ => some typed)
-            (left := fun _ _ => none)
-            (right := fun _ _ => none)
-            (bvar := fun _ _ _ => none) t
+            (prod := fun _ _ => none)
+            (lam := fun _ => none)
+            (app := fun {_ _ _ typed _} _ _ => some typed)
+            (left := fun _ => none)
+            (right := fun _ => none)
+            (bvar := fun _ _ _ => none)
         have hf := congrArg f teq
         change _ = some _ at hf
         rewrite! [← hab] at hf
@@ -446,16 +444,15 @@ theorem Neutral.toLambdaTerm_injective {ι : Type u} {κ : Type v} {ζ : κ → 
         dsimp only [Neutral.toTyping] at teq
         let f {ctx : List (Object ι)} {term : LambdaTerm ι κ} {typ : Object ι}
             (t : Typing ζ ctx term typ) : Option (Object ι) :=
-          Typing.rec
-            (motive := fun _ _ _ _ => Option (Object ι))
+          t.casesOn
             (of := fun _ _ => none)
             (unit := fun _ => none)
-            (prod := fun _ _ _ _ => none)
-            (lam := fun _ _ => none)
-            (app := fun _ _ _ _ => none)
-            (left := fun {_ _ _ right} _ _ => some right)
-            (right := fun _ _ => none)
-            (bvar := fun _ _ _ => none) t
+            (prod := fun _ _ => none)
+            (lam := fun _ => none)
+            (app := fun _ _ => none)
+            (left := fun {_ _ _ right} _ => some right)
+            (right := fun _ => none)
+            (bvar := fun _ _ _ => none)
         have hf := congrArg f teq
         change _ = some _ at hf
         rewrite! [← hab] at hf
@@ -470,16 +467,15 @@ theorem Neutral.toLambdaTerm_injective {ι : Type u} {κ : Type v} {ζ : κ → 
         dsimp only [Neutral.toTyping] at teq
         let f {ctx : List (Object ι)} {term : LambdaTerm ι κ} {typ : Object ι}
             (t : Typing ζ ctx term typ) : Option (Object ι) :=
-          Typing.rec
-            (motive := fun _ _ _ _ => Option (Object ι))
+          t.casesOn
             (of := fun _ _ => none)
             (unit := fun _ => none)
-            (prod := fun _ _ _ _ => none)
-            (lam := fun _ _ => none)
-            (app := fun _ _ _ _ => none)
-            (left := fun _ _ => none)
-            (right := fun {_ _ left _} _ _ => some left)
-            (bvar := fun _ _ _ => none) t
+            (prod := fun _ _ => none)
+            (lam := fun _ => none)
+            (app := fun _ _ => none)
+            (left := fun _ => none)
+            (right := fun {_ _ left _} _ => some left)
+            (bvar := fun _ _ _ => none)
         have hf := congrArg f teq
         change _ = some _ at hf
         rewrite! [← hab] at hf

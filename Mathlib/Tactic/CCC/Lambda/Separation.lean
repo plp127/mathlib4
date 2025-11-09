@@ -206,18 +206,12 @@ theorem Neutralu.toNeutral_injective {ι : Type u} {κ : Type v} {ζ : κ → Ob
             match t, b with
             | _, .of k₂ _ => by
               let f {ctx : List (Object ι)} {typ : Object ι} (t : Neutral ζ ctx typ) : Option κ :=
-                Neutral.rec
-                  (motive_1 := fun _ _ _ => PUnit)
-                  (motive_2 := fun _ _ _ => Option κ)
-                  (ofNeutral := fun _ _ => .unit)
-                  (lam := fun _ _ _ _ => .unit)
-                  (unit := fun _ => .unit)
-                  (prod := fun _ _ _ _ => .unit)
+                t.casesOn
                   (of := fun k _ => some k)
-                  (app := fun _ _ _ _ => none)
-                  (left := fun _ _ => none)
-                  (right := fun _ _ => none)
-                  (bvar := fun _ _ _ => none) t
+                  (app := fun _ _ => none)
+                  (left := fun _ => none)
+                  (right := fun _ => none)
+                  (bvar := fun _ _ _ => none)
               have hf := congrArg f hb
               change _ = some k₂ at hf
               rewrite! [← ht] at hf
