@@ -1010,7 +1010,7 @@ unsafe def Normalu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [Decida
   match typ, typ₁, typ₂, t₁, t₂ with
   | .of i, .of u, .of v, .ofNeutral n₁, .ofNeutral n₂ =>
     if ht : _ then
-      haveI k := Neutralu.separate i (.of u) (.of v) [] ht₁ ht₂ n₁ n₂ (by grind) ht
+      haveI k := Neutralu.separate i (.of u) (.of v) [] PUnit.unit ht₁ ht₂ n₁ n₂ (by grind) ht
       ⟨k.1, k.2.1, k.2.2.1, k.2.2.2.cast (by cases ht₁; rfl) (by cases ht₂; rfl)⟩
     else
       haveI k := Neutralu.separateHead (ht₁ ▸ n₁) (ht₂ ▸ n₂) fun htt hhtt => by
@@ -1025,24 +1025,11 @@ unsafe def Normalu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [Decida
       ⟨k.1, k.2.1, k.2.2.1.2, k.2.2.1.1, k.2.2.2.cast (by cases ht₁; rfl) (by cases ht₂; rfl)⟩
 
 unsafe def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ] {ζ : κ → Objectu ι}
-    {ctx : List (Objectu ι)} (i : ι) (typ₁ typ₂ : Object ι)
-    (ss : List ((t : Objectu ι) ×
-      (arg₁ : Normalu (fun k => (ζ k).toObject₀.toObject)
-        (ctx.map fun t => t.toObject₀.toObject) t.toObject₀.toObject) ×
-      (arg₂ : Normalu (fun k => (ζ k).toObject₀.toObject)
-        (ctx.map fun t => t.toObject₀.toObject) t.toObject₀.toObject) ×
-      (arg₁ ≠ arg₂ →
-      (f : ι →₀ Nat) × (rk : (k : κ) → (ζ k).toObject₀.toObject.read fun u => Fin (2 ^ f u)) ×
-      (ci : (ctx.map (fun t => t.toObject₀.toObject)).TProd (Object.read fun u ↦ Fin (2 ^ f u))) ×
-      Separation (fun u => Fin (2 ^ f u))
-        (arg₁.toNormal.toLambdaTerm.read (fun u => Fin (2 ^ f u))
-          rk (ctx.map (fun t : Objectu ι => t.toObject₀.toObject))
-            ci t.toObject₀.toObject arg₁.toNormal.toTyping)
-        (arg₂.toNormal.toLambdaTerm.read (fun u => Fin (2 ^ f u))
-          rk (ctx.map (fun t : Objectu ι => t.toObject₀.toObject))
-            ci t.toObject₀.toObject arg₂.toNormal.toTyping))))
-    (ht₁ : typ₁ = (ss.map fun t => t.1.toObject₀.toObject).foldr Object.hom (.of i))
-    (ht₂ : typ₂ = (ss.map fun t => t.1.toObject₀.toObject).foldr Object.hom (.of i))
+    {ctx : List (Objectu ι)} (i : ι) (typ₁ typ₂ : Object ι) (ss : List (Objectu ι))
+    (as : (ss.map fun t => t.toObject₀.toObject).TProd
+      (Normalu (fun k => (ζ k).toObject₀.toObject) (ctx.map fun t => t.toObject₀.toObject)))
+    (ht₁ : typ₁ = (ss.map fun t => t.toObject₀.toObject).foldl (fun t s => .hom s t) (.of i))
+    (ht₂ : typ₂ = (ss.map fun t => t.toObject₀.toObject).foldl (fun t s => .hom s t) (.of i))
     (t₁ : Neutralu (fun k => (ζ k).toObject₀.toObject)
       (ctx.map fun t => t.toObject₀.toObject) typ₁)
     (t₂ : Neutralu (fun k => (ζ k).toObject₀.toObject)
@@ -1052,10 +1039,12 @@ unsafe def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
     (f : ι →₀ Nat) × (rk : (k : κ) → (ζ k).toObject₀.toObject.read fun u => Fin (2 ^ f u)) ×
     (ci : (ctx.map (fun t => t.toObject₀.toObject)).TProd (Object.read fun u ↦ Fin (2 ^ f u))) ×
     Separation (fun u => Fin (2 ^ f u))
-      (ht₁ ▸ t₁.toNeutral.toLambdaTerm.read (fun u => Fin (2 ^ f u))
-        rk (ctx.map (fun t : Objectu ι => t.toObject₀.toObject)) ci typ₁ t₁.toNeutral.toTyping)
-      (ht₂ ▸ t₂.toNeutral.toLambdaTerm.read (fun u => Fin (2 ^ f u))
-        rk (ctx.map (fun t : Objectu ι => t.toObject₀.toObject)) ci typ₂ t₂.toNeutral.toTyping) :=
+      (((ht₁ ▸ t₁).detelescope (ss.map _) as).toNeutral.toLambdaTerm.read
+        (fun u => Fin (2 ^ f u)) rk (ctx.map _) ci (.of i)
+          ((ht₁ ▸ t₁).detelescope (ss.map _) as).toNeutral.toTyping)
+      (((ht₂ ▸ t₂).detelescope (ss.map _) as).toNeutral.toLambdaTerm.read
+        (fun u => Fin (2 ^ f u)) rk (ctx.map _) ci (.of i)
+          ((ht₂ ▸ t₂).detelescope (ss.map _) as).toNeutral.toTyping) :=
 by stop exact
   match ctx, typ₁, t₁ with
   | _, _, .of u _ =>
