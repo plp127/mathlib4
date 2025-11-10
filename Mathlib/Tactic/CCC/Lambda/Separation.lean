@@ -462,6 +462,17 @@ theorem Neutralu.detelescope_telescope {ι : Type u} {κ : Type v} {ζ : κ → 
   | .app fn arg => congrFun (congrArg Neutralu.app fn.detelescope_telescope) arg
   | .bvar _ _ _ => rfl
 
+theorem Neutralu.detelescope_append {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {tt : Object ι} (typs₁ typs₂ : List (Object ι))
+    (args₁ : typs₁.TProd (Normalu ζ ctx)) (args₂ : typs₂.TProd (Normalu ζ ctx))
+    (t : Neutralu ζ ctx ((typs₁ ++ typs₂).foldl (fun t s => .hom s t) tt)) :
+    Neutralu.detelescope (typs₁ ++ typs₂) (args₁.append args₂) t =
+      Neutralu.detelescope typs₁ args₁
+        (Neutralu.detelescope typs₂ args₂ (List.foldl_append ▸ t)) := by
+  induction typs₁ generalizing tt with
+  | nil => rfl
+  | cons t ts ih => exact congrFun (congrArg Neutralu.app (ih args₁.2 t)) args₁.1
+
 def interpretZero {ι : Type u} (f : ι →₀ Nat) (t : Object ι) :
     t.read fun u => Fin (2 ^ f u) :=
   match t with
@@ -843,153 +854,6 @@ def Neutralu.separateHead {ι : Type u} [DecidableEq ι] {κ : Type v} [Decidabl
       (Neutralu.separateHead.extracted_3 v)
 
 set_option debug.skipKernelTC true
--- #exit
--- #exit
-theorem Neutralu.separate.extracted_5 {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι}
-    {ss : List (Object ι)} (op : List (Objectu ι))
-    (cop : List.TProd (Normalu (fun k ↦ (ζ k).toObject₀.toObject) ss)
-      (List.map (fun t ↦ t.toObject₀.toObject) op))
-    (typ : Objectu ι) (tt₁ : Object ι)
-    (ht₁ : tt₁ = List.foldl (fun t s ↦ s.hom t) typ.toObject₀.toObject
-      (List.map (fun t ↦ t.toObject₀.toObject) op))
-    (uTyp target : Objectu ι)
-    (fn₁ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) ss (uTyp.toObject₀.toObject.hom tt₁))
-    (arg₁ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) ss uTyp.toObject₀.toObject)
-    (fn₂ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) ss
-      (uTyp.toObject₀.toObject.hom target.toObject₀.toObject))
-    (pf : List.map (fun t ↦ t.toObject₀.toObject) op ++
-      List.map (fun t ↦ t.toObject₀.toObject) [uTyp] =
-      List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-    (pf_1 : uTyp.toObject₀.toObject.hom tt₁ = List.foldl (fun t s ↦ s.hom t) typ.toObject₀.toObject
-      (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp])))
-    (pf_2 : uTyp.toObject₀.toObject.hom target.toObject₀.toObject =
-      List.foldl (fun t s ↦ s.hom t) typ.toObject₀.toObject
-        (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp])))
-    (k :
-      (f : ι →₀ ℕ) ×
-        (rk : (k : κ) → Object.read (fun u ↦ Fin (2 ^ f u)) (ζ k).toObject₀.toObject) ×
-          (ci : List.TProd (Object.read fun u ↦ Fin (2 ^ f u)) ss) ×
-            Separation (fun u ↦ Fin (2 ^ f u))
-              (LambdaTerm.read (fun u ↦ Fin (2 ^ f u)) rk ss ci
-                (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-                    (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-                    (pf_1 ▸ fn₁)).toNeutral.toLambdaTerm
-                typ.toObject₀.toObject
-                (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-                    (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-                    (pf_1 ▸ fn₁)).toNeutral.toTyping)
-              (LambdaTerm.read (fun u ↦ Fin (2 ^ f u)) rk ss ci
-                (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-                    (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-                    (pf_2 ▸ fn₂)).toNeutral.toLambdaTerm
-                typ.toObject₀.toObject
-                (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-                    (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-                    (pf_2 ▸ fn₂)).toNeutral.toTyping)) :
-    LambdaTerm.read (fun u ↦ Fin (2 ^ k.fst u)) k.snd.fst ss k.snd.snd.fst
-        (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-            (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-              (pf_1 ▸ fn₁)).toNeutral.toLambdaTerm
-        typ.toObject₀.toObject
-        (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-          (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-          (pf_1 ▸ fn₁)).toNeutral.toTyping =
-      LambdaTerm.read (fun u ↦ Fin (2 ^ k.fst u)) k.snd.fst ss k.snd.snd.fst
-        (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) op) cop
-          (ht₁ ▸ fn₁.app arg₁)).toNeutral.toLambdaTerm
-        typ.toObject₀.toObject
-        (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) op) cop
-          (ht₁ ▸ fn₁.app arg₁)).toNeutral.toTyping := by
-  have eeq : Object.hom uTyp.toObject₀.toObject tt₁ =
-      (op.map (fun t ↦ t.toObject₀.toObject) ++ [uTyp.toObject₀.toObject]).foldl
-        (fun t s ↦ .hom s t) typ.toObject₀.toObject := by simp [ht₁]
-  rw [read_detelescope, read_detelescope]
-  rewrite! (castMode := .all) [List.map_append, List.map_singleton,
-    List.TProd.castList_refl]
-  rw [List.TProd.map_append, List.TProd.castList_castList]
-  rw [← List.TProd.castList_append_castList (List.map_id _) rfl,
-    List.TProd.castList_refl [uTyp.toObject₀.toObject]]
-  rw [detelescopeInterpretation_append]
-  dsimp [detelescopeInterpretation, List.TProd.map]
-  congr
-  rewrite! (castMode := .all) [← ht₁]
-  dsimp [Neutralu.toNeutral, Neutral.toTyping]
-  rewrite! (castMode := .all) [← eeq]
-  rfl
-
-theorem Neutralu.separate.extracted_6 {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι}
-    {ss : List (Object ι)} (op : List (Objectu ι))
-    (cop : List.TProd (Normalu (fun k ↦ (ζ k).toObject₀.toObject) ss)
-      (List.map (fun t ↦ t.toObject₀.toObject) op))
-    (typ : Objectu ι) (tt₁ : Object ι)
-    (ht₁ : tt₁ = List.foldl (fun t s ↦ s.hom t) typ.toObject₀.toObject
-      (List.map (fun t ↦ t.toObject₀.toObject) op))
-    (uTyp target : Objectu ι)
-    (fn₁ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) ss (uTyp.toObject₀.toObject.hom tt₁))
-    (arg₁ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) ss uTyp.toObject₀.toObject)
-    (ht₂ : target.toObject₀.toObject = List.foldl (fun t s ↦ s.hom t) typ.toObject₀.toObject
-      (List.map (fun t ↦ t.toObject₀.toObject) op))
-    (fn₂ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) ss
-      (uTyp.toObject₀.toObject.hom target.toObject₀.toObject))
-    (pf : List.map (fun t ↦ t.toObject₀.toObject) op ++ [uTyp.toObject₀.toObject] =
-      List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-    (pf_1 : uTyp.toObject₀.toObject.hom tt₁ = List.foldl (fun t s ↦ s.hom t) typ.toObject₀.toObject
-      (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp])))
-    (pf_2 : uTyp.toObject₀.toObject.hom target.toObject₀.toObject =
-      List.foldl (fun t s ↦ s.hom t) typ.toObject₀.toObject
-        (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp])))
-    (k :
-      (f : ι →₀ ℕ) ×
-        (rk : (k : κ) → Object.read (fun u ↦ Fin (2 ^ f u)) (ζ k).toObject₀.toObject) ×
-          (ci : List.TProd (Object.read fun u ↦ Fin (2 ^ f u)) ss) ×
-            Separation (fun u ↦ Fin (2 ^ f u))
-              (LambdaTerm.read (fun u ↦ Fin (2 ^ f u)) rk ss ci
-                (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-                  (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-                    (pf_1 ▸ fn₁)).toNeutral.toLambdaTerm
-                typ.toObject₀.toObject
-                (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-                  (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-                    (pf_1 ▸ fn₁)).toNeutral.toTyping)
-              (LambdaTerm.read (fun u ↦ Fin (2 ^ f u)) rk ss ci
-                (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-                  (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-                    (pf_2 ▸ fn₂)).toNeutral.toLambdaTerm
-                typ.toObject₀.toObject
-                (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-                  (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-                    (pf_2 ▸ fn₂)).toNeutral.toTyping)) :
-    LambdaTerm.read (fun u ↦ Fin (2 ^ k.fst u)) k.snd.fst ss k.snd.snd.fst
-        (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-            (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-              (pf_2 ▸ fn₂)).toNeutral.toLambdaTerm
-        typ.toObject₀.toObject
-        (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) (op ++ [uTyp]))
-            (List.TProd.castList pf (cop.append (arg₁, PUnit.unit)) :)
-              (pf_2 ▸ fn₂)).toNeutral.toTyping =
-      LambdaTerm.read (fun u ↦ Fin (2 ^ k.fst u)) k.snd.fst ss k.snd.snd.fst
-        (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) op) cop
-            (ht₂ ▸ fn₂.app arg₁)).toNeutral.toLambdaTerm
-        typ.toObject₀.toObject
-        (Neutralu.detelescope (List.map (fun t ↦ t.toObject₀.toObject) op) cop
-            (ht₂ ▸ fn₂.app arg₁)).toNeutral.toTyping := by
-  have eeq : Object.hom uTyp.toObject₀.toObject tt₁ =
-      (op.map (fun t ↦ t.toObject₀.toObject) ++ [uTyp.toObject₀.toObject]).foldl
-        (fun t s ↦ .hom s t) typ.toObject₀.toObject := by simp [ht₁]
-  rw [read_detelescope, read_detelescope]
-  rewrite! (castMode := .all) [List.map_append, List.map_singleton,
-    List.TProd.castList_refl]
-  rw [List.TProd.map_append, List.TProd.castList_castList]
-  rw [← List.TProd.castList_append_castList (List.map_id _) rfl,
-    List.TProd.castList_refl [uTyp.toObject₀.toObject]]
-  rw [detelescopeInterpretation_append]
-  dsimp [detelescopeInterpretation, List.TProd.map]
-  congr
-  rewrite! (castMode := .all) [← ht₁]
-  cases ht₁.trans ht₂.symm
-  dsimp [Neutralu.toNeutral, Neutral.toTyping]
-  rewrite! (castMode := .all) [← eeq]
-  rfl
 
 mutual
 
@@ -1056,8 +920,34 @@ unsafe def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
   | ctx, tt₁, .app fn₁ arg₁ =>
     match ctx, typ₂, t₂ with
     | _, _, .of _ _
-    | _, _, .bvar _ _ _ => False.elim (by cases ht.1)
-    | _, _, .app fn₂ arg₂ => sorry
+    | _, _, .bvar _ _ _ => (List.cons_ne_nil _ _ ht.1).elim
+    | _, _, .app fn₂ arg₂ =>
+      if haa : (List.cons.inj ht.1).1 ▸ arg₁ = arg₂ then
+        match fn₂.uType with
+        | ⟨.hom uTyp _, huTyp⟩ =>
+          haveI k := Neutralu.separate i _ _ (ss ++ [uTyp])
+            (.castList List.map_append.symm
+              (as.append (((Object.hom.inj huTyp).1 ▸ arg₂ :), PUnit.unit)))
+            (by cases huTyp; simpa [(List.cons.inj ht.1).1] using ht₁)
+            (by cases huTyp; simpa using ht₂) fn₁ fn₂
+            (by grind) ⟨(List.cons.inj ht.1).2, by grind [Neutralu.telescope]⟩
+          ⟨k.1, k.2.1, k.2.2.1, k.2.2.2.cast
+            (by
+              cases ht₁; cases (List.cons.inj ht.1).1; cases (Object.hom.inj huTyp).1
+              congr 3 <;> (
+                rewrite! [← haa, List.map_append]
+                rw [List.TProd.castList_refl, Neutralu.detelescope_append]
+                rewrite! [List.foldl_append]
+                rfl))
+            (by
+              cases ht₂; cases (List.cons.inj ht.1).1; cases (Object.hom.inj huTyp).1
+              congr 3 <;> (
+                rewrite! [List.map_append]
+                rw [List.TProd.castList_refl, Neutralu.detelescope_append]
+                rewrite! [List.foldl_append]
+                rfl))⟩
+      else
+        sorry
 termination_by ι
 decreasing_by all_goals sorry
 
