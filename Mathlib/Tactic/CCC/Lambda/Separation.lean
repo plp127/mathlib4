@@ -373,20 +373,20 @@ def extendWith {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) (ss :
         (extends_unique f i h ((restrict f i ra₂).2 ra₁ h)),
       fun k => (extendWith f i ss (rk₁ (restrict f i k).1) (fn k)).2.2⟩
 
-def separateFunc {ι : Type u} (f : ι →₀ Nat) (t : Object ι) (u v : t.read fun u => Fin (2 ^ f u))
+def separateFunc {ι : Type u} {f : ι →₀ Nat} {t : Object ι} {u v : t.read fun u => Fin (2 ^ f u)}
     (s : Separation (fun u => Fin (2 ^ f u)) u v) (w : t.read fun u => Fin (2 ^ f u)) : Fin 2 :=
   match t with
   | .of i => if @Eq (Fin (2 ^ f i)) w v then 1 else 0
   | .unit => s.elim
-  | .prod left right =>
+  | .prod _ _ =>
     s.elim
-      (fun s => separateFunc f left u.1 v.1 s w.1)
-      (fun s => separateFunc f right u.2 v.2 s w.2)
-  | .hom _ target => separateFunc f target (u s.1) (v s.1) s.2 (w s.1)
+      (fun s => separateFunc s w.1)
+      (fun s => separateFunc s w.2)
+  | .hom _ _ => separateFunc s.2 (w s.1)
 
 theorem separateFunc_left {ι : Type u} (f : ι →₀ Nat) (t : Object ι)
     (u v : t.read fun u => Fin (2 ^ f u))
-    (s : Separation (fun u => Fin (2 ^ f u)) u v) : separateFunc f t u v s u = 0 := by
+    (s : Separation (fun u => Fin (2 ^ f u)) u v) : separateFunc s u = 0 := by
   induction t with
   | of _ => exact if_neg s.down.down
   | unit => exact s.elim
@@ -398,7 +398,7 @@ theorem separateFunc_left {ι : Type u} (f : ι →₀ Nat) (t : Object ι)
 
 theorem separateFunc_right {ι : Type u} (f : ι →₀ Nat) (t : Object ι)
     (u v : t.read fun u => Fin (2 ^ f u))
-    (s : Separation (fun u => Fin (2 ^ f u)) u v) : separateFunc f t u v s v = 1 := by
+    (s : Separation (fun u => Fin (2 ^ f u)) u v) : separateFunc s v = 1 := by
   induction t with
   | of _ => exact if_pos rfl
   | unit => exact s.elim
@@ -407,6 +407,21 @@ theorem separateFunc_right {ι : Type u} (f : ι →₀ Nat) (t : Object ι)
     | inl s => exact ihl u.1 v.1 s
     | inr s => exact ihr u.2 v.2 s
   | hom _ _ _ ih => exact ih (u s.1) (v s.1) s.2
+
+def extendSingleRightFun {ι : Type u} [DecidableEq ι] {f : ι →₀ Nat} (ss : List (Object ι))
+    {t : Object ι} (fw : t.read (fun u => Fin (2 ^ f u)) → Fin 2) :
+    ((t :: ss).foldr (fun k t => k.read (fun u => Fin (2 ^ f u)) → t) (Fin 2)) :=
+  match ss with
+  | [] => fw
+  | _ :: sss => fun o _ => extendSingleRightFun sss fw o
+
+def extendLeftFun {ι : Type u} [DecidableEq ι] {f : ι →₀ Nat}
+    (ss : List (Object ι)) {ts : List (Object ι)}
+    (fw : ts.foldr (fun k t => k.read (fun u => Fin (2 ^ f u)) → t) (Fin 2)) :
+    ((ss ++ ts).foldr (fun k t => k.read (fun u => Fin (2 ^ f u)) → t) (Fin 2)) :=
+  match ss with
+  | [] => fw
+  | _ :: sss => fun _ => extendLeftFun sss fw
 
 mutual
 
