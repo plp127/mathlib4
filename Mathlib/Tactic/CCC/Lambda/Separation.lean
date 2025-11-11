@@ -373,6 +373,41 @@ def extendWith {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) (ss :
         (extends_unique f i h ((restrict f i ra₂).2 ra₁ h)),
       fun k => (extendWith f i ss (rk₁ (restrict f i k).1) (fn k)).2.2⟩
 
+def separateFunc {ι : Type u} (f : ι →₀ Nat) (t : Object ι) (u v : t.read fun u => Fin (2 ^ f u))
+    (s : Separation (fun u => Fin (2 ^ f u)) u v) (w : t.read fun u => Fin (2 ^ f u)) : Fin 2 :=
+  match t with
+  | .of i => if @Eq (Fin (2 ^ f i)) w v then 1 else 0
+  | .unit => s.elim
+  | .prod left right =>
+    s.elim
+      (fun s => separateFunc f left u.1 v.1 s w.1)
+      (fun s => separateFunc f right u.2 v.2 s w.2)
+  | .hom _ target => separateFunc f target (u s.1) (v s.1) s.2 (w s.1)
+
+theorem separateFunc_left {ι : Type u} (f : ι →₀ Nat) (t : Object ι)
+    (u v : t.read fun u => Fin (2 ^ f u))
+    (s : Separation (fun u => Fin (2 ^ f u)) u v) : separateFunc f t u v s u = 0 := by
+  induction t with
+  | of _ => exact if_neg s.down.down
+  | unit => exact s.elim
+  | prod _ _ ihl ihr =>
+    cases s with
+    | inl s => exact ihl u.1 v.1 s
+    | inr s => exact ihr u.2 v.2 s
+  | hom _ _ _ ih => exact ih (u s.1) (v s.1) s.2
+
+theorem separateFunc_right {ι : Type u} (f : ι →₀ Nat) (t : Object ι)
+    (u v : t.read fun u => Fin (2 ^ f u))
+    (s : Separation (fun u => Fin (2 ^ f u)) u v) : separateFunc f t u v s v = 1 := by
+  induction t with
+  | of _ => exact if_pos rfl
+  | unit => exact s.elim
+  | prod _ _ ihl ihr =>
+    cases s with
+    | inl s => exact ihl u.1 v.1 s
+    | inr s => exact ihr u.2 v.2 s
+  | hom _ _ _ ih => exact ih (u s.1) (v s.1) s.2
+
 mutual
 
 def Normalu.decEq {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ] {ζ : κ → Object ι}
@@ -853,6 +888,43 @@ def Neutralu.separateHead {ι : Type u} [DecidableEq ι] {κ : Type v} [Decidabl
     (Neutralu.separateHead.extracted_1 u v (Neutralu.separateHead.extracted_2 u v huv))
       (Neutralu.separateHead.extracted_3 v)
 
+def Neutralu.separateOfArgNe {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι}
+    {ctx : List (Objectu ι)} (sc : List (Object ι))
+    (hs : sc = ctx.map fun t ↦ t.toObject₀.toObject)
+    (i : ι) (tt₁ td₁ tt₂ td₂ : Object ι) (ss : List (Objectu ι))
+    (as : (ss.map fun t ↦ t.toObject₀.toObject).TProd
+      (Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc))
+    (ht₁ : tt₁ = (ss.map fun t ↦ t.toObject₀.toObject).foldl (fun t s ↦ .hom s t) (.of i))
+    (ht₂ : tt₂ = (ss.map fun t ↦ t.toObject₀.toObject).foldl (fun t s ↦ .hom s t) (.of i))
+    (fn₁ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc (.hom td₁ tt₁))
+    (arg₁ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₁)
+    (fn₂ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc (.hom td₂ tt₂))
+    (arg₂ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₂)
+    (h : ht₁ ▸ fn₁.app arg₁ ≠ ht₂ ▸ fn₂.app arg₂)
+    (ht : ∃ (h : (fn₁.app arg₁).telescope.fst = (fn₂.app arg₂).telescope.fst),
+      ht₁ ▸ h ▸ (fn₁.app arg₁).telescope.snd.2 = ht₂ ▸ (fn₂.app arg₂).telescope.snd.2)
+    (haa : (List.cons.inj ht.1).1 ▸ arg₁ ≠ arg₂) (uTyp target : Objectu ι)
+    (huTyp : (uTyp.hom target).toObject₀.toObject = td₂.hom tt₂)
+    (k : (f : ι →₀ ℕ) × (rk : (k : κ) → (ζ k).toObject₀.toObject.read fun u ↦ Fin (2 ^ f u)) ×
+        (ci : sc.TProd (Object.read fun u ↦ Fin (2 ^ f u))) ×
+        Separation (fun u ↦ Fin (2 ^ f u))
+          (((List.cons.inj ht.1).1.trans (Object.hom.inj huTyp).1.symm) ▸
+            arg₁.toNormal.toLambdaTerm.read (fun u ↦ Fin (2 ^ f u))
+              rk sc ci td₁ arg₁.toNormal.toTyping)
+          ((Object.hom.inj huTyp).1.symm ▸
+            arg₂.toNormal.toLambdaTerm.read (fun u ↦ Fin (2 ^ f u))
+              rk sc ci td₂ arg₂.toNormal.toTyping)) :
+    (f : ι →₀ ℕ) × (rk : (k : κ) → (ζ k).toObject₀.toObject.read fun u ↦ Fin (2 ^ f u)) ×
+    (ci : sc.TProd (Object.read fun u ↦ Fin (2 ^ f u))) ×
+    Separation (fun u ↦ Fin (2 ^ f u))
+      (((ht₁ ▸ Neutralu.app fn₁ arg₁).detelescope (ss.map _) as).toNeutral.toLambdaTerm.read
+        (fun u ↦ Fin (2 ^ f u)) rk sc ci (.of i)
+          ((ht₁ ▸ Neutralu.app fn₁ arg₁).detelescope (ss.map _) as).toNeutral.toTyping)
+      (((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).toNeutral.toLambdaTerm.read
+        (fun u ↦ Fin (2 ^ f u)) rk sc ci (.of i)
+          ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).toNeutral.toTyping) :=
+  sorry
+#exit
 mutual
 
 def Normalu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ] {ζ : κ → Objectu ι}
@@ -886,7 +958,7 @@ def Normalu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq �
         (congrArg (List.cons dom.toObject₀.toObject) hs) tb tb₁ tb₂
         (Object.hom.inj ht₁).2 (Object.hom.inj ht₂).2 body₁ body₂ (by grind)
       ⟨k.1, k.2.1, k.2.2.1.2, k.2.2.1.1, k.2.2.2.cast (by cases ht₁; rfl) (by cases ht₂; rfl)⟩
-termination_by structural t₁
+termination_by structural t₂
 
 def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ] {ζ : κ → Objectu ι}
     {ctx : List (Objectu ι)} (sc : List (Object ι))
@@ -920,7 +992,7 @@ def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq 
   | ctx, tt₁, .app fn₁ arg₁ =>
     match ctx, typ₂, t₂ with
     | _, _, .of _ _
-    | _, _, .bvar _ _ _ => (List.cons_ne_nil _ _ ht.1).elim
+    | _, _, .bvar _ _ _ => (List.cons_ne_nil _ fn₁.telescope.1 ht.1).elim
     | _, _, .app fn₂ arg₂ =>
       if haa : (List.cons.inj ht.1).1 ▸ arg₁ = arg₂ then
         match (hs ▸ fn₂).uType with
@@ -932,23 +1004,30 @@ def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq 
             (by cases huTyp; simpa using ht₂) fn₁ fn₂
             (by grind) ⟨(List.cons.inj ht.1).2, by grind [Neutralu.telescope]⟩
           ⟨k.1, k.2.1, k.2.2.1, k.2.2.2.cast
-            (by
-              cases ht₁; cases (List.cons.inj ht.1).1; cases (Object.hom.inj huTyp).1
+            (by as_aux_lemma =>
               congr 3 <;> (
+                cases ht₁; cases (List.cons.inj ht.1).1; cases (Object.hom.inj huTyp).1
                 rewrite! [← haa, List.map_append]
                 rw [List.TProd.castList_refl, Neutralu.detelescope_append]
                 rewrite! [List.foldl_append]
                 rfl))
-            (by
-              cases ht₂; cases (List.cons.inj ht.1).1; cases (Object.hom.inj huTyp).1
+            (by as_aux_lemma =>
               congr 3 <;> (
+                cases ht₂; cases (List.cons.inj ht.1).1; cases (Object.hom.inj huTyp).1
                 rewrite! [List.map_append]
                 rw [List.TProd.castList_refl, Neutralu.detelescope_append]
                 rewrite! [List.foldl_append]
                 rfl))⟩
       else
-        sorry
-termination_by structural t₁
+        match (hs ▸ fn₂).uType with
+        | ⟨.hom uTyp _, huTyp⟩ =>
+          haveI k := Normalu.separate sc hs uTyp _ _
+            ((List.cons.inj ht.1).1.trans (Object.hom.inj huTyp).1.symm)
+            (Object.hom.inj huTyp).1.symm arg₁ arg₂
+            (by cases (Object.hom.inj huTyp).1; exact haa)
+          Neutralu.separateOfArgNe sc hs i _ _ _ _ ss as ht₁ ht₂
+            fn₁ arg₁ fn₂ arg₂ h ht haa uTyp _ huTyp k
+termination_by structural t₂
 
 end
 
