@@ -20,7 +20,7 @@ theorem List.TProd.get_ext {ι : Type u} {α : ι → Type v} {l : List ι}
     {t₁ t₂ : l.TProd α} (h : ∀ n i hi, t₁.get n i hi = t₂.get n i hi) : t₁ = t₂ := by
   induction l with
   | nil => rfl
-  | cons x xs ih =>
+  | cons x _ ih =>
     exact Prod.ext (h 0 x (Option.mem_some_self x)) (ih fun n i hi => h (n + 1) i hi)
 
 @[simp]
@@ -28,7 +28,7 @@ theorem List.TProd.get_mk {ι : Type u} {α : ι → Type v} {l : List ι} (f : 
     (n : Nat) (i : ι) (hi : i ∈ l[n]?) : (List.TProd.mk l f).get n i hi = f i := by
   induction l generalizing n with
   | nil => cases hi
-  | cons x xs ih =>
+  | cons _ _ ih =>
     cases n with
     | zero => cases hi; rfl
     | succ n => exact ih n hi
@@ -37,26 +37,24 @@ def List.TProd.ofFn {ι : Type u} {α : ι → Type v} (l : List ι)
     (f : (n : Fin l.length) → α l[n]) : List.TProd α l :=
   match l with
   | [] => PUnit.unit
-  | _ :: xs => (f ⟨0, Nat.zero_lt_succ _⟩, List.TProd.ofFn xs fun n => f n.succ)
+  | _ :: xs => (f ⟨0, Nat.zero_lt_succ xs.length⟩, List.TProd.ofFn xs fun n => f n.succ)
 
 theorem List.TProd.get_ofFn {ι : Type u} {α : ι → Type v} (l : List ι)
     (f : (n : Fin l.length) → α l[n]) (n : Fin l.length) : (List.TProd.ofFn l f).get n (l[n.1]'n.2)
       (Option.mem_def.2 (getElem?_eq_getElem n.2)) = f n := by
   induction l with
   | nil => exact n.elim0
-  | cons x xs ih =>
+  | cons _ _ ih =>
     cases n using Fin.cases with
     | zero => rfl
-    | succ n => exact ih _ n
+    | succ n => exact ih (fun i => f i.succ) n
 
 @[simp]
 def List.TProd.castList {ι : Type u} {α : ι → Type v} {l₁ l₂ : List ι}
     (eq : l₁ = l₂) (t : l₁.TProd α) : l₂.TProd α :=
   match l₁, l₂  with
   | [], [] => t
-  | _ :: _, _ :: _ =>
-    (cast (congrArg α (List.cons_eq_cons.1 eq).1) t.1,
-      List.TProd.castList (List.cons_eq_cons.1 eq).2 t.2)
+  | _ :: _, _ :: _ => ((List.cons.inj eq).1 ▸ t.1, List.TProd.castList (List.cons.inj eq).2 t.2)
 
 @[simp]
 theorem List.TProd.castList_refl {ι : Type u} {α : ι → Type v} (l : List ι)
@@ -110,7 +108,7 @@ def List.TProd.map {ι : Type u} {κ : Type v} {α : ι → Type w} {β : κ →
     (fi : ι → κ) (f : (i : ι) → α i → β (fi i)) (t : List.TProd α l) : List.TProd β (l.map fi) :=
   match l with
   | [] => PUnit.unit
-  | _ :: _ => (f _ t.1, List.TProd.map fi f t.2)
+  | x :: _ => (f x t.1, List.TProd.map fi f t.2)
 
 @[simp]
 theorem List.TProd.get_map {ι : Type u} {κ : Type v} {α : ι → Type w} {β : κ → Type r} {l : List ι}
@@ -118,7 +116,7 @@ theorem List.TProd.get_map {ι : Type u} {κ : Type v} {α : ι → Type w} {β 
     (hi : i ∈ l[n]?) : (t.map fi f).get n (fi i) (by grind) = f i (t.get n i hi) := by
   induction l generalizing n with
   | nil => cases hi
-  | cons x xs ih =>
+  | cons _ _ ih =>
     cases n with
     | zero => cases hi; rfl
     | succ n => exact ih t.2 n hi
@@ -202,7 +200,7 @@ theorem Neutralu.toNeutral_injective {ι : Type u} {κ : Type v} {ζ : κ → Ob
     | _, .of k₁ _=>
         @id (∀ (t : Object ι) (ht : ζ k₁ = t) (b : Neutralu ζ ctx t)
           (hb : ht ▸ Neutral.of k₁ ctx = b.toNeutral),
-          Neutralu.of k₁ ctx = ht ▸ b) (fun t ht b hb =>
+          ht ▸ Neutralu.of k₁ ctx = b) (fun t ht b hb =>
             match t, b with
             | _, .of k₂ _ => by
               let f {ctx : List (Object ι)} {typ : Object ι} (t : Neutral ζ ctx typ) : Option κ :=
@@ -303,7 +301,7 @@ def extend {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) {typ : Ob
   | .of u => ⟨if hu : u = i then
     (finProdFinEquiv ((rk₁, 0) : Fin (2 ^ f u) × Fin 2)).cast (by simp [hu, Nat.pow_add])
     else rk₁.cast (by simp [hu]), by unfold Extends; split <;> simp⟩
-  | .unit => ⟨rk₁, trivial⟩
+  | .unit => ⟨PUnit.unit, trivial⟩
   | .prod _ _ =>
     ⟨((extend f i rk₁.1).1, (extend f i rk₁.2).1),
       ⟨(extend f i rk₁.1).2, (extend f i rk₁.2).2⟩⟩
@@ -318,7 +316,7 @@ def restrict {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) {typ : 
   | .of u => ⟨if hu : u = i then
     (finProdFinEquiv.symm (rk₂.cast (by simp [hu, Nat.pow_add])) : Fin (2 ^ f u) × Fin 2).1
     else rk₂.cast (by simp [hu]), fun _ _ => rfl⟩
-  | .unit => ⟨rk₂, fun _ _ => trivial⟩
+  | .unit => ⟨PUnit.unit, fun _ _ => trivial⟩
   | .prod _ _ =>
     ⟨((restrict f i rk₂.1).1, (restrict f i rk₂.2).1),
       fun k hk => ⟨(restrict f i rk₂.1).2 k.1 hk.1, (restrict f i rk₂.2).2 k.2 hk.2⟩⟩
@@ -358,7 +356,7 @@ def IsRightProjection {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι
 
 def extendWith {ι : Type u} [DecidableEq ι] (f : ι →₀ Nat) (i : ι) (ss : List (Object ι))
     (rk₁ : (ss.foldr Object.hom (.of i)).read fun u => Fin (2 ^ f u))
-    (fn : (ss.foldr (fun k t => k.read (fun u => Fin (2 ^ extendI f i u)) → t) (Fin 2))) :
+    (fn : (ss.foldr (fun s t => s.read (fun u => Fin (2 ^ extendI f i u)) → t) (Fin 2))) :
     { rk₂ : (ss.foldr Object.hom (.of i)).read fun u => Fin (2 ^ extendI f i u) //
       Extends f i rk₁ rk₂ ∧ IsRightProjection f i ss rk₂ fn } :=
   match ss with
@@ -408,17 +406,17 @@ theorem separateFunc_right {ι : Type u} (f : ι →₀ Nat) (t : Object ι)
     | inr s => exact ihr u.2 v.2 s
   | hom _ _ _ ih => exact ih (u s.1) (v s.1) s.2
 
-def extendSingleRightFun {ι : Type u} [DecidableEq ι] {f : ι →₀ Nat} (ss : List (Object ι))
+def extendSingleRightFun {ι : Type u} {f : ι →₀ Nat} (ss : List (Object ι))
     {t : Object ι} (fw : t.read (fun u => Fin (2 ^ f u)) → Fin 2) :
-    ((t :: ss).foldr (fun k t => k.read (fun u => Fin (2 ^ f u)) → t) (Fin 2)) :=
+    ((t :: ss).foldr (fun s t => s.read (fun u => Fin (2 ^ f u)) → t) (Fin 2)) :=
   match ss with
   | [] => fw
   | _ :: sss => fun o _ => extendSingleRightFun sss fw o
 
-def extendLeftFun {ι : Type u} [DecidableEq ι] {f : ι →₀ Nat}
+def extendLeftFun {ι : Type u} {f : ι →₀ Nat}
     (ss : List (Object ι)) {ts : List (Object ι)}
-    (fw : ts.foldr (fun k t => k.read (fun u => Fin (2 ^ f u)) → t) (Fin 2)) :
-    ((ss ++ ts).foldr (fun k t => k.read (fun u => Fin (2 ^ f u)) → t) (Fin 2)) :=
+    (fw : ts.foldr (fun s t => s.read (fun u => Fin (2 ^ f u)) → t) (Fin 2)) :
+    ((ss ++ ts).foldr (fun s t => s.read (fun u => Fin (2 ^ f u)) → t) (Fin 2)) :=
   match ss with
   | [] => fw
   | _ :: sss => fun _ => extendLeftFun sss fw
@@ -607,14 +605,14 @@ theorem splitArrows_eq_of_foldl_eq {ι : Type u} (l : List (Object ι)) (t₁ t�
       (Objectu.toObject₀_injective (Object₀.toObject_injective h))
   | cons _ _ ih =>
     cases t₂ with
-    | of => cases h
-    | hom s t => exact ih t (Object.hom.inj h).2
+    | of _ => cases h
+    | hom _ t => exact ih t (Object.hom.inj h).2
 
 def readSingleFVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Objectu ι} {ctx : List (Object ι)} {t : Objectu ι}
     (v : Neutralu (fun k => (ζ k).toObject₀.toObject) ctx t.toObject₀.toObject)
     (k : κ) : (ζ k).toObject₀.toObject.read fun u => Fin (2 ^ interpretSingleObject t u) :=
-  if h : ∃ h : (List.foldl (fun t s ↦ s.hom t) t.toObject₀.toObject v.telescope.1) =
+  if h : ∃ h : (List.foldl (fun t s ↦ .hom s t) t.toObject₀.toObject v.telescope.1) =
       (ζ k).toObject₀.toObject, h ▸ v.telescope.2.2 = Neutralu.of k ctx then
     interpretOne (interpretSingleObject t) (ζ k) (Finsupp.mem_support_iff.mp
       (Finset.mem_singleton.mpr (splitArrows_eq_of_foldl_eq _ _ _ h.1).symm))
@@ -633,7 +631,7 @@ def readSingleBVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq
     (ctx.map fun t => t.toObject₀.toObject).TProd
       (Object.read fun u => Fin (2 ^ interpretSingleObject t u)) :=
   .ofFn (ctx.map fun t => t.toObject₀.toObject) fun n =>
-    if h : ∃ h : (List.foldl (fun t s ↦ s.hom t) t.toObject₀.toObject v.telescope.1) =
+    if h : ∃ h : (List.foldl (fun t s ↦ .hom s t) t.toObject₀.toObject v.telescope.1) =
         ctx[n].toObject₀.toObject,
         h ▸ v.telescope.2.2 = Neutralu.bvar n ctx[n].toObject₀.toObject (by grind) then
       List.getElem_map _ ▸
@@ -668,9 +666,9 @@ theorem Neutralu.separateHead.extracted_1 {ι : Type u} [DecidableEq ι] {κ : T
       (List.map (fun t ↦ t.toObject₀.toObject) ctx) t₁.toObject₀.toObject)
     (v : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
       (List.map (fun t ↦ t.toObject₀.toObject) ctx) t₂.toObject₀.toObject)
-    (huv : ∀ (h : List.foldl (fun t s ↦ s.hom t) t₁.toObject₀.toObject u.telescope.fst =
-        List.foldl (fun t s ↦ s.hom t) t₂.toObject₀.toObject v.telescope.fst),
-        h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2) :
+    (huv : ∀ (h : List.foldl (fun t s ↦ .hom s t) t₁.toObject₀.toObject u.telescope.fst =
+        List.foldl (fun t s ↦ .hom s t) t₂.toObject₀.toObject v.telescope.fst),
+      h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2) :
     interpretZero (interpretSingleObject t₂) t₁.toObject₀.toObject =
       LambdaTerm.read (fun u ↦ Fin (2 ^ (interpretSingleObject t₂) u)) (readSingleFVarHead v)
         (List.map (fun t ↦ t.toObject₀.toObject) ctx) (readSingleBVarHead v)
@@ -762,8 +760,8 @@ theorem Neutralu.separateHead.extracted_2 {ι : Type u} {κ : Type v} {ζ : κ �
     (u v : Neutralu (fun k ↦ (ζ k).toObject₀.toObject)
       (List.map (fun t ↦ t.toObject₀.toObject) ctx) t)
     (huv : ∀ (h : u.telescope.fst = v.telescope.fst), h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2)
-    (h : List.foldl (fun t s ↦ s.hom t) t u.telescope.fst =
-      List.foldl (fun t s ↦ s.hom t) t v.telescope.fst) :
+    (h : List.foldl (fun t s ↦ .hom s t) t u.telescope.fst =
+      List.foldl (fun t s ↦ .hom s t) t v.telescope.fst) :
     h ▸ u.telescope.snd.2 ≠ v.telescope.snd.2 := by
   have tt : u.telescope.1 = v.telescope.1 := by
     generalize u.telescope.1 = tu at h
@@ -903,8 +901,36 @@ def Neutralu.separateHead {ι : Type u} [DecidableEq ι] {κ : Type v} [Decidabl
     (Neutralu.separateHead.extracted_1 u v (Neutralu.separateHead.extracted_2 u v huv))
       (Neutralu.separateHead.extracted_3 v)
 
-def Neutralu.separateOfArgNe {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι}
-    {ctx : List (Objectu ι)} (sc : List (Object ι))
+def extendSingleFVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
+    {ζ : κ → Object ι} {ctx : List (Object ι)} {i : ι} {f : ι →₀ Nat} (v : Neutralu ζ ctx (.of i))
+    (fn : (v.telescope.1.reverse.foldr
+      (fun s t => s.read (fun u => Fin (2 ^ extendI f i u)) → t) (Fin 2)))
+    (k : κ) (rk : (ζ k).read fun u ↦ Fin (2 ^ f u)) :
+    (ζ k).read fun u ↦ Fin (2 ^ extendI f i u) :=
+  if h : ∃ h : (List.foldl (fun t s ↦ .hom s t) (.of i) v.telescope.1) = ζ k,
+      h ▸ v.telescope.2.2 = Neutralu.of k ctx then
+    h.1 ▸ List.foldr_reverse ▸
+      (extendWith f i v.telescope.1.reverse
+        (List.foldr_reverse.symm ▸ h.1.symm ▸ rk) fn).1
+  else (extend f i rk).1
+
+def extendSingleBVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
+    {ζ : κ → Object ι} {ctx : List (Object ι)} {i : ι} {f : ι →₀ Nat} (v : Neutralu ζ ctx (.of i))
+    (fn : (v.telescope.1.reverse.foldr
+      (fun s t => s.read (fun u => Fin (2 ^ extendI f i u)) → t) (Fin 2)))
+    (ci : ctx.TProd (Object.read fun u => Fin (2 ^ f u))) :
+    ctx.TProd (Object.read fun u => Fin (2 ^ extendI f i u)) :=
+  .ofFn ctx fun n =>
+    if h : ∃ h : (List.foldl (fun t s ↦ .hom s t) (.of i) v.telescope.1) = ctx[n],
+        h ▸ v.telescope.2.2 = Neutralu.bvar n.1 ctx[n]
+          (Option.mem_def.2 (List.getElem?_eq_getElem n.2)) then
+      h.1 ▸ List.foldr_reverse ▸ (extendWith f i v.telescope.1.reverse
+        (List.foldr_reverse.symm ▸ h.1.symm ▸
+          ci.get n ctx[n] (Option.mem_def.2 (List.getElem?_eq_getElem n.2))) fn)
+    else (extend f i (ci.get n ctx[n] (Option.mem_def.2 (List.getElem?_eq_getElem n.2)))).1
+
+def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
+    {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} (sc : List (Object ι))
     (hs : sc = ctx.map fun t ↦ t.toObject₀.toObject)
     (i : ι) (tt₁ td₁ tt₂ td₂ : Object ι) (ss : List (Objectu ι))
     (as : (ss.map fun t ↦ t.toObject₀.toObject).TProd
@@ -915,11 +941,11 @@ def Neutralu.separateOfArgNe {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι
     (arg₁ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₁)
     (fn₂ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc (.hom td₂ tt₂))
     (arg₂ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₂)
-    (h : ht₁ ▸ fn₁.app arg₁ ≠ ht₂ ▸ fn₂.app arg₂)
-    (ht : ∃ (h : (fn₁.app arg₁).telescope.fst = (fn₂.app arg₂).telescope.fst),
-      ht₁ ▸ h ▸ (fn₁.app arg₁).telescope.snd.2 = ht₂ ▸ (fn₂.app arg₂).telescope.snd.2)
+    (ht : ∃ (h : (Neutralu.app fn₁ arg₁).telescope.fst = (Neutralu.app fn₂ arg₂).telescope.fst),
+      ht₁ ▸ h ▸ (Neutralu.app fn₁ arg₁).telescope.snd.2 =
+      ht₂ ▸ (Neutralu.app fn₂ arg₂).telescope.snd.2)
     (haa : (List.cons.inj ht.1).1 ▸ arg₁ ≠ arg₂) (uTyp target : Objectu ι)
-    (huTyp : (uTyp.hom target).toObject₀.toObject = td₂.hom tt₂)
+    (huTyp : (Objectu.hom uTyp target).toObject₀.toObject = .hom td₂ tt₂)
     (k : (f : ι →₀ ℕ) × (rk : (k : κ) → (ζ k).toObject₀.toObject.read fun u ↦ Fin (2 ^ f u)) ×
         (ci : sc.TProd (Object.read fun u ↦ Fin (2 ^ f u))) ×
         Separation (fun u ↦ Fin (2 ^ f u))
@@ -938,7 +964,11 @@ def Neutralu.separateOfArgNe {ι : Type u} {κ : Type v} {ζ : κ → Objectu ι
       (((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).toNeutral.toLambdaTerm.read
         (fun u ↦ Fin (2 ^ f u)) rk sc ci (.of i)
           ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).toNeutral.toTyping) :=
-  sorry
+  ⟨extendI k.1 i,
+    fun g => extendSingleFVarHead ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as)
+      sorry g (k.2.1 g),
+    extendSingleBVarHead ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as)
+      sorry k.2.2.1, .up (.up sorry)⟩
 #exit
 mutual
 
@@ -1041,7 +1071,7 @@ def Neutralu.separate {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq 
             (Object.hom.inj huTyp).1.symm arg₁ arg₂
             (by cases (Object.hom.inj huTyp).1; exact haa)
           Neutralu.separateOfArgNe sc hs i _ _ _ _ ss as ht₁ ht₂
-            fn₁ arg₁ fn₂ arg₂ h ht haa uTyp _ huTyp k
+            fn₁ arg₁ fn₂ arg₂ ht haa uTyp _ huTyp k
 termination_by structural t₂
 
 end

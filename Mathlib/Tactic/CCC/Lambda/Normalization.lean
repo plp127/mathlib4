@@ -385,30 +385,9 @@ theorem Neutral.toLambdaTerm_injective {ι : Type u} {κ : Type v} {ζ : κ → 
     | _, .of k₁ _ =>
       @id (∀ (t : Object ι) (ht : ζ k₁ = t) (b : Neutral ζ ctx t)
         (hb : LambdaTerm.of k₁ = b.toLambdaTerm),
-        Neutral.of k₁ ctx = ht ▸ b) (fun t ht b hb =>
+        ht ▸ Neutral.of k₁ ctx = b) (fun t ht b hb =>
           match t, b with
-          | _, .of k₂ _ => by
-            have teq := Subsingleton.elim
-              (hb ▸ ht ▸ @id (Typing _ _ (.of k₁) (ζ k₁)) (Neutral.toTyping (.of k₁ _)))
-              (Neutral.toTyping (.of k₂ _))
-            dsimp only [Neutral.toTyping] at teq
-            let f {ctx : List (Object ι)} {term : LambdaTerm ι κ} {typ : Object ι}
-                (t : Typing ζ ctx term typ) : Option κ :=
-              t.casesOn
-                (of := fun k _ => some k)
-                (unit := fun _ => none)
-                (prod := fun _ _ => none)
-                (lam := fun _ => none)
-                (app := fun _ _ => none)
-                (left := fun _ => none)
-                (right := fun _ => none)
-                (bvar := fun _ _ _ => none)
-            have hf := congrArg f teq
-            change _ = some _ at hf
-            dsimp only [Neutral.toLambdaTerm] at hb hf
-            rewrite! (castMode := .all) [← ht, ← hb] at hf
-            cases hf
-            rfl
+          | _, .of k₂ _ => by cases hb; rfl
         ) (ζ k₁) rfl b hab
     | _, .app fn₁ arg₁ =>
       match b with
