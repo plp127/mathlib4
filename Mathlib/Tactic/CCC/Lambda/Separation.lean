@@ -510,6 +510,19 @@ theorem Neutralu.detelescope_telescope {ι : Type u} {κ : Type v} {ζ : κ → 
   | .app fn arg => congrFun (congrArg Neutralu.app fn.detelescope_telescope) arg
   | .bvar _ _ _ => rfl
 
+theorem Neutralu.telescope_detelescope {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
+    {ctx : List (Object ι)} {tt : Object ι} (typs : List (Object ι))
+    (args : typs.TProd (Normalu ζ ctx))
+    (t : Neutralu ζ ctx (typs.foldl (fun t s => .hom s t) tt)) :
+    (Neutralu.detelescope typs args t).telescope =
+    ⟨typs ++ t.telescope.1, args.append t.telescope.2.1,
+      List.foldl_append.symm ▸ t.telescope.2.2⟩ := by
+  induction typs generalizing tt with
+  | nil => rfl
+  | cons _ _ ih =>
+    rw [Neutralu.detelescope, Neutralu.telescope, ih args.2 t]
+    rfl
+
 theorem Neutralu.detelescope_append {ι : Type u} {κ : Type v} {ζ : κ → Object ι}
     {ctx : List (Object ι)} {tt : Object ι} (typs₁ typs₂ : List (Object ι))
     (args₁ : typs₁.TProd (Normalu ζ ctx)) (args₂ : typs₂.TProd (Normalu ζ ctx))
@@ -929,6 +942,36 @@ def extendSingleBVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [Decidable
           ci.get n ctx[n] (Option.mem_def.2 (List.getElem?_eq_getElem n.2))) fn)
     else (extend f i (ci.get n ctx[n] (Option.mem_def.2 (List.getElem?_eq_getElem n.2)))).1
 
+def Neutralu.fullSepFun {ι : Type u} [DecidableEq ι] {κ : Type v}
+    {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} (sc : List (Object ι))
+    (hs : sc = List.map (fun t ↦ t.toObject₀.toObject) ctx) (i : ι) (tt₁ td₁ tt₂ td₂ : Object ι)
+    (ss : List (Objectu ι))
+    (as : List.TProd (Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc)
+      (List.map (fun t ↦ t.toObject₀.toObject) ss))
+    (ht₁ : tt₁ = (ss.map fun t ↦ t.toObject₀.toObject).foldl (fun t s ↦ .hom s t) (.of i))
+    (ht₂ : tt₂ = (ss.map fun t ↦ t.toObject₀.toObject).foldl (fun t s ↦ .hom s t) (.of i))
+    (fn₁ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc (.hom td₁ tt₁))
+    (arg₁ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₁)
+    (fn₂ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc (.hom td₂ tt₂))
+    (arg₂ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₂)
+    (ht : ∃ (h : (Neutralu.app fn₁ arg₁).telescope.fst = (Neutralu.app fn₂ arg₂).telescope.fst),
+      ht₁ ▸ h ▸ (Neutralu.app fn₁ arg₁).telescope.snd.2 =
+      ht₂ ▸ (Neutralu.app fn₂ arg₂).telescope.snd.2)
+    (haa : (List.cons.inj ht.1).1 ▸ arg₁ ≠ arg₂) (uTyp target : Objectu ι)
+    (huTyp : (Objectu.hom uTyp target).toObject₀.toObject = .hom td₂ tt₂)
+    (k : (f : ι →₀ ℕ) × (rk : (k : κ) → (ζ k).toObject₀.toObject.read (fun u ↦ Fin (2 ^ f u))) ×
+        (ci : List.TProd (Object.read fun u ↦ Fin (2 ^ f u)) sc) ×
+        Separation (fun u ↦ Fin (2 ^ f u))
+          ((List.cons.inj ht.1).1.trans (Object.hom.inj huTyp).1.symm ▸
+            LambdaTerm.read (fun u ↦ Fin (2 ^ f u))
+              rk sc ci arg₁.toNormal.toLambdaTerm td₁ arg₁.toNormal.toTyping)
+          ((Object.hom.inj huTyp).1.symm ▸
+            LambdaTerm.read (fun u ↦ Fin (2 ^ f u))
+              rk sc ci arg₂.toNormal.toLambdaTerm td₂ arg₂.toNormal.toTyping)) :
+    List.foldr (fun s t ↦ Object.read (fun u ↦ Fin (2 ^ (extendI k.fst i) u)) s → t) (Fin 2)
+      ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).telescope.fst.reverse :=
+  sorry
+
 def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} (sc : List (Object ι))
     (hs : sc = ctx.map fun t ↦ t.toObject₀.toObject)
@@ -949,7 +992,7 @@ def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
     (k : (f : ι →₀ ℕ) × (rk : (k : κ) → (ζ k).toObject₀.toObject.read fun u ↦ Fin (2 ^ f u)) ×
         (ci : sc.TProd (Object.read fun u ↦ Fin (2 ^ f u))) ×
         Separation (fun u ↦ Fin (2 ^ f u))
-          (((List.cons.inj ht.1).1.trans (Object.hom.inj huTyp).1.symm) ▸
+          ((List.cons.inj ht.1).1.trans (Object.hom.inj huTyp).1.symm ▸
             arg₁.toNormal.toLambdaTerm.read (fun u ↦ Fin (2 ^ f u))
               rk sc ci td₁ arg₁.toNormal.toTyping)
           ((Object.hom.inj huTyp).1.symm ▸
