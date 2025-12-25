@@ -942,23 +942,49 @@ def extendSingleBVarHead {ι : Type u} [DecidableEq ι] {κ : Type v} [Decidable
           ci.get n ctx[n] (Option.mem_def.2 (List.getElem?_eq_getElem n.2))) fn)
     else (extend f i (ci.get n ctx[n] (Option.mem_def.2 (List.getElem?_eq_getElem n.2)))).1
 
-def Neutralu.fullSepFun {ι : Type u} [DecidableEq ι] {κ : Type v}
-    {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} (sc : List (Object ι))
-    (hs : sc = List.map (fun t ↦ t.toObject₀.toObject) ctx) (i : ι) (tt₁ td₁ tt₂ td₂ : Object ι)
-    (ss : List (Objectu ι))
-    (as : List.TProd (Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc)
-      (List.map (fun t ↦ t.toObject₀.toObject) ss))
+def foldrArrowEquiv {ι : Type u} {f : ι → Sort v} (l : List ι) (α : Sort (max v w 1)) :
+    l.foldr (fun s t => f s → t) α ≃ (((i : Fin l.length) → f l[i]) → α) where
+  toFun := l.rec (fun x _ => x) fun x xs ih p v =>
+    ih (p (v ⟨0, Nat.zero_lt_succ xs.length⟩)) fun i => v i.succ
+  invFun := l.rec (fun x => x Fin.rec0) fun x xs ih p o =>
+    ih fun v => p (Fin.cases o v)
+  left_inv := by
+    induction l with
+    | nil => intro; rfl
+    | cons x xs ih =>
+      intro p
+      funext o
+      exact ih (p o)
+  right_inv := by
+    induction l with
+    | nil =>
+      intro x
+      funext o
+      apply congrArg x
+      funext i
+      exact i.elim0
+    | cons x xs ih =>
+      intro p
+      funext v
+      trans p (Fin.cases (v ⟨0, Nat.zero_lt_succ xs.length⟩) fun i => v i.succ)
+      · exact congrFun (ih _) _
+      · apply congrArg p
+        exact funext (Fin.cases rfl fun _ => rfl)
+
+def Neutralu.fullSepFun {ι : Type u} [DecidableEq ι] {κ : Type v} {ζ : κ → Objectu ι}
+    {sc : List (Object ι)} {i : ι} {tt₁ td₁ tt₂ td₂ : Object ι} {ss : List (Objectu ι)}
+    {as : List.TProd (Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc)
+      (List.map (fun t ↦ t.toObject₀.toObject) ss)}
     (ht₁ : tt₁ = (ss.map fun t ↦ t.toObject₀.toObject).foldl (fun t s ↦ .hom s t) (.of i))
     (ht₂ : tt₂ = (ss.map fun t ↦ t.toObject₀.toObject).foldl (fun t s ↦ .hom s t) (.of i))
-    (fn₁ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc (.hom td₁ tt₁))
-    (arg₁ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₁)
-    (fn₂ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc (.hom td₂ tt₂))
-    (arg₂ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₂)
+    {fn₁ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc (.hom td₁ tt₁)}
+    {arg₁ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₁}
+    {fn₂ : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc (.hom td₂ tt₂)}
+    {arg₂ : Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc td₂}
     (ht : ∃ (h : (Neutralu.app fn₁ arg₁).telescope.fst = (Neutralu.app fn₂ arg₂).telescope.fst),
       ht₁ ▸ h ▸ (Neutralu.app fn₁ arg₁).telescope.snd.2 =
       ht₂ ▸ (Neutralu.app fn₂ arg₂).telescope.snd.2)
-    (haa : (List.cons.inj ht.1).1 ▸ arg₁ ≠ arg₂) (uTyp target : Objectu ι)
-    (huTyp : (Objectu.hom uTyp target).toObject₀.toObject = .hom td₂ tt₂)
+    {uTyp target : Objectu ι} (huTyp : (Objectu.hom uTyp target).toObject₀.toObject = .hom td₂ tt₂)
     (k : (f : ι →₀ ℕ) × (rk : (k : κ) → (ζ k).toObject₀.toObject.read (fun u ↦ Fin (2 ^ f u))) ×
         (ci : List.TProd (Object.read fun u ↦ Fin (2 ^ f u)) sc) ×
         Separation (fun u ↦ Fin (2 ^ f u))
@@ -970,7 +996,18 @@ def Neutralu.fullSepFun {ι : Type u} [DecidableEq ι] {κ : Type v}
               rk sc ci arg₂.toNormal.toLambdaTerm td₂ arg₂.toNormal.toTyping)) :
     List.foldr (fun s t ↦ Object.read (fun u ↦ Fin (2 ^ (extendI k.fst i) u)) s → t) (Fin 2)
       ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).telescope.fst.reverse :=
-  sorry
+  (foldrArrowEquiv.{u, 1, 0} _ _).symm fun p => separateFunc k.2.2.2
+    (Eq.rec (motive := fun x _ => Object.read _ x)
+      (restrict k.1 i (p ⟨fn₂.telescope.fst.length, by
+        cases ht₂
+        rw [telescope_detelescope, List.length_reverse, List.length_append]
+        apply Nat.lt_add_left
+        exact Nat.lt_add_one fn₂.telescope.fst.length⟩)).1 <| by
+      cases ht₂; cases (Object.hom.inj huTyp).1
+      rw [Fin.getElem_fin]
+      rewrite! [telescope_detelescope, List.reverse_append,
+        List.getElem_append_left (by simp [telescope]), List.getElem_reverse]
+      simp [telescope])
 
 def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} (sc : List (Object ι))
@@ -1009,9 +1046,9 @@ def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
           ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).toNeutral.toTyping) :=
   ⟨extendI k.1 i,
     fun g => extendSingleFVarHead ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as)
-      sorry g (k.2.1 g),
+      (Neutralu.fullSepFun ht₁ ht₂ ht huTyp k) g (k.2.1 g),
     extendSingleBVarHead ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as)
-      sorry k.2.2.1, .up (.up sorry)⟩
+      (Neutralu.fullSepFun ht₁ ht₂ ht huTyp k) k.2.2.1, .up (.up sorry)⟩
 #exit
 mutual
 
