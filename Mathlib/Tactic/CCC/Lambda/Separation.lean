@@ -214,8 +214,7 @@ theorem Neutralu.toNeutral_injective {ι : Type u} {κ : Type v} {ζ : κ → Ob
               change _ = some k₂ at hf
               rewrite! [← ht] at hf
               cases hf
-              rfl
-          ) (ζ k₁) rfl b hab
+              rfl) (ζ k₁) rfl b hab
     | _, .bvar n _ _ =>
       match b with
       | .bvar _ _ _ => by cases hab; rfl
@@ -1008,12 +1007,21 @@ def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
           ((ht₁ ▸ Neutralu.app fn₁ arg₁).detelescope (ss.map _) as).toNeutral.toTyping)
       (((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).toNeutral.toLambdaTerm.read
         (fun u ↦ Fin (2 ^ f u)) rk sc ci (.of i)
-          ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).toNeutral.toTyping) :=
-  ⟨extendI k.1 i,
+          ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as).toNeutral.toTyping) := by
+  refine ⟨extendI k.1 i,
     fun g => extendSingleFVarHead ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as)
       (Neutralu.fullSepFun ht₁ ht₂ ht huTyp k) g (k.2.1 g),
     extendSingleBVarHead ((ht₂ ▸ Neutralu.app fn₂ arg₂).detelescope (ss.map _) as)
-      (Neutralu.fullSepFun ht₁ ht₂ ht huTyp k) k.2.2.1, .up (.up sorry)⟩
+      (Neutralu.fullSepFun ht₁ ht₂ ht huTyp k) k.2.2.1, .up (.up ?_)⟩
+  apply ne_of_apply_ne (Fin.cast (by simp [Nat.pow_succ] : 2 ^ extendI k.fst i i = 2 ^ k.fst i * 2))
+  apply ne_of_apply_ne finProdFinEquiv.symm
+  apply ne_of_apply_ne Prod.snd
+  refine calc
+      _ = 0 := ?_
+      @Ne (Fin 2) 0 1 := Fin.zero_ne_one
+      1 = _ := Eq.symm ?_
+  · sorry
+  · sorry
 #exit
 mutual
 

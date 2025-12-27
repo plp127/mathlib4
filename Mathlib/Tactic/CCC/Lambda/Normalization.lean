@@ -387,8 +387,7 @@ theorem Neutral.toLambdaTerm_injective {ι : Type u} {κ : Type v} {ζ : κ → 
         (hb : LambdaTerm.of k₁ = b.toLambdaTerm),
         ht ▸ Neutral.of k₁ ctx = b) (fun t ht b hb =>
           match t, b with
-          | _, .of k₂ _ => by cases hb; rfl
-        ) (ζ k₁) rfl b hab
+          | _, .of k₂ _ => by cases hb; rfl) (ζ k₁) rfl b hab
     | _, .app fn₁ arg₁ =>
       match b with
       | .app fn₂ arg₂ => by
