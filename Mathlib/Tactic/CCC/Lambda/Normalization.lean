@@ -869,7 +869,7 @@ mutual
 
 def RConv.toNormal {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
     {tt : Object ι} {t : LambdaTerm ι κ} {satt : Typing ζ ctx t tt} (rc : RConv satt) :
-    { c : Normal ζ ctx tt // Convertible satt c.toTyping} :=
+    { c : Normal ζ ctx tt // Convertible satt c.toTyping } :=
   match tt with
   | .of _ => rc
   | .unit => ⟨.unit ctx, .unit_eta satt⟩
@@ -886,7 +886,7 @@ def RConv.toNormal {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : Li
 
 def RConv.ofNeutral {ι : Type u} {κ : Type v} {ζ : κ → Object ι} {ctx : List (Object ι)}
     {tt : Object ι} {t : LambdaTerm ι κ} {satt : Typing ζ ctx t tt}
-    (ne : { c : Neutral ζ ctx tt // Convertible satt c.toTyping}) :
+    (ne : { c : Neutral ζ ctx tt // Convertible satt c.toTyping }) :
     RConv satt :=
   match tt with
   | .of _ => ⟨.ofNeutral ne.1, ne.2⟩
@@ -901,7 +901,7 @@ end
 
 def LambdaTerm.normalize {ι : Type u} {κ : Type v} {ζ : κ → Object ι} (ctx : List (Object ι))
     (tt : Object ι) (t : LambdaTerm ι κ) (satt : Typing ζ ctx t tt) :
-    { c : Normal ζ ctx tt // Convertible satt c.toTyping} :=
+    { c : Normal ζ ctx tt // Convertible satt c.toTyping } :=
   RConv.toNormal (.congr (.of_eq (replace_of_bvar t) _ _) (RConv.replace (fun k => .of k ctx)
     (fun n hn => .bvar n ctx[n] (Option.mem_def.2 (List.getElem?_eq_getElem hn))) satt
       (fun k => RConv.ofNeutral ⟨.of k ctx, .refl (.of k ctx)⟩)
