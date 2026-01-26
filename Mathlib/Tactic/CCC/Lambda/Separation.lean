@@ -223,8 +223,8 @@ theorem Neutralu.toNeutral_injective {ι : Type u} {κ : Type v} {ζ : κ → Ob
       | .app _ _ => by
         cases (Neutral.app.inj hab).1
         exact congr (congrArg Neutralu.app
-          (Neutralu.toNeutral_injective (Neutral.app.inj hab).2.1.eq))
-          (Normalu.toNormal_injective (Neutral.app.inj hab).2.2.eq)
+          (Neutralu.toNeutral_injective (eq_of_heq (Neutral.app.inj hab).2.1)))
+          (Normalu.toNormal_injective (eq_of_heq (Neutral.app.inj hab).2.2))
 
 end
 

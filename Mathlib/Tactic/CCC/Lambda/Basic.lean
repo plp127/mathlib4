@@ -3,7 +3,6 @@ Copyright (c) 2025 Aaron Liu. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Aaron Liu
 -/
-import Mathlib.CategoryTheory.Closed.Cartesian
 import Mathlib.Data.Prod.TProd
 import Mathlib.Tactic.DepRewrite
 
