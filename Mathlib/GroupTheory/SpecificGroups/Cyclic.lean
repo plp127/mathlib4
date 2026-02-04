@@ -788,9 +788,9 @@ noncomputable def zmodAddEquivOfGenerator [AddGroup G] {g : G} (hg : ∀ x, x �
   have kereq : ((zmultiplesHom G) g).ker = zmultiples (n : ℤ) := by
     rw [zmultiplesHom_ker_eq, ← Nat.card_zmultiples, ← hn,
       Nat.card_congr (Equiv.subtypeUnivEquiv hg)]
-  Int.quotientZMultiplesNatEquivZMod n
-    |>.symm.trans <| QuotientAddGroup.quotientAddEquivOfEq kereq
-    (QuotientAddGroup.quotientKerEquivOfSurjective (zmultiplesHom G g) hg).symm.trans
+  (Int.quotientZMultiplesNatEquivZMod n).symm.trans <|
+    (QuotientAddGroup.quotientAddEquivOfEq kereq).symm.trans
+    (QuotientAddGroup.quotientKerEquivOfSurjective (zmultiplesHom G g) hg)
 
 @[simp]
 theorem zmodAddEquivOfGenerator_apply_intCast [AddGroup G]
