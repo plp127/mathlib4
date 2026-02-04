@@ -790,7 +790,7 @@ noncomputable def zmodAddEquivOfGenerator [AddGroup G] {g : G} (hg : âˆ€ x, x âˆ
       Nat.card_congr (Equiv.subtypeUnivEquiv hg)]
   Int.quotientZMultiplesNatEquivZMod n
     |>.symm.trans <| QuotientAddGroup.quotientAddEquivOfEq kereq
-    |>.symm.trans <| QuotientAddGroup.quotientKerEquivOfSurjective (zmultiplesHom G g) hg
+    (QuotientAddGroup.quotientKerEquivOfSurjective (zmultiplesHom G g) hg).symm.trans
 
 @[simp]
 theorem zmodAddEquivOfGenerator_apply_intCast [AddGroup G]
