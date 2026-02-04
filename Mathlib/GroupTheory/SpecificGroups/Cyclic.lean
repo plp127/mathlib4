@@ -785,11 +785,11 @@ See `zmodAddCyclicAddEquiv` for a version which doesn't take an explicit generat
 and instead picks one out with the axiom of choice. -/
 noncomputable def zmodAddEquivOfGenerator [AddGroup G] {g : G} (hg : ∀ x, x ∈ zmultiples g)
     {n : ℕ} (hn : Nat.card G = n) : ZMod n ≃+ G :=
-  have kereq : ((zmultiplesHom G) g).ker = zmultiples (n : ℤ) := by
+  have kereq : zmultiples (n : ℤ) = ((zmultiplesHom G) g).ker := by
     rw [zmultiplesHom_ker_eq, ← Nat.card_zmultiples, ← hn,
       Nat.card_congr (Equiv.subtypeUnivEquiv hg)]
   (Int.quotientZMultiplesNatEquivZMod n).symm.trans <|
-    (QuotientAddGroup.quotientAddEquivOfEq kereq).symm.trans
+    (QuotientAddGroup.quotientAddEquivOfEq kereq).trans
     (QuotientAddGroup.quotientKerEquivOfSurjective (zmultiplesHom G g) hg)
 
 @[simp]
