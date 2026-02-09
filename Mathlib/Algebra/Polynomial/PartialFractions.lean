@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2023 Sidharth Hariharan. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Kevin Buzzard, Sidharth Hariharan
+Authors: Kevin Buzzard, Sidharth Hariharan, Aaron Liu
 -/
 module
 
@@ -45,11 +45,141 @@ of Patrick Massot.
 public section
 
 
-variable (R : Type*) [CommRing R] [IsDomain R]
+variable {R : Type*} [CommRing R] [Nontrivial R]
 
-open Polynomial
+namespace Polynomial
 
-variable (K : Type*) [Field K] [Algebra R[X] K] [IsFractionRing R[X] K]
+section Mul
+
+section OneDenominator
+
+theorem eq_quo_mul_pow_add_sum_rem_mul_pow (f : R[X]) {g : R[X]} (hg : g.Monic)
+    (n : ℕ) : ∃ (q : R[X]) (r : Fin n → R[X]), (∀ i, (r i).degree < g.degree) ∧
+      f = q * g ^ n + ∑ i, r i * g ^ i.1 := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    obtain ⟨q, r, hr, hf⟩ := ih
+    refine ⟨q /ₘ g, Fin.snoc r (q %ₘ g), fun i => ?_, hf.trans ?_⟩
+    · cases i using Fin.lastCases with
+      | cast i => simpa using hr i
+      | last => simpa using degree_modByMonic_lt q hg
+    · rw [Fin.sum_univ_castSucc, ← add_rotate', Fin.snoc_last, Fin.val_last,
+        ← add_assoc, pow_succ', ← mul_assoc, ← add_mul, mul_comm (q /ₘ g) g,
+        modByMonic_add_div q hg]
+      simp
+
+end OneDenominator
+
+section ManyDenominators
+
+theorem eq_quo_mul_prod_add_sum_rem_mul_prod {ι : Type*} [DecidableEq ι] {s : Finset ι}
+    (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
+    (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j)) :
+    ∃ (q : R[X]) (r : (i : ι) → R[X]),
+      (∀ i ∈ s, (r i).degree < (g i).degree) ∧
+      f = q * (∏ i ∈ s, g i) + ∑ i ∈ s, r i * ∏ k ∈ s.erase i, g k := by
+  induction s using Finset.cons_induction with
+  | empty => simp
+  | cons i s hi ih =>
+    rw [Finset.forall_mem_cons] at hg
+    rw [Finset.coe_cons, Set.pairwise_insert] at hgg
+    obtain ⟨q, r, -, hf⟩ := ih hg.2 hgg.1
+    have hjs {j : ι} (hj : j ∈ s) : i ≠ j := fun hij => hi (hij ▸ hj)
+    have hc (j : ι) : ∃ a b, j ∈ s → a * g i + b * g j = 1 :=
+      if h : j ∈ s ∧ i ≠ j then
+        (hgg.2 j h.1 h.2).1.elim fun a h => h.elim fun b h => ⟨a, b, fun _ => h⟩
+      else
+        ⟨0, 0, fun hj => (h ⟨hj, hjs hj⟩).elim⟩
+    choose a b hab using hc
+    refine ⟨(q + ∑ j ∈ s, r j * b j %ₘ g i) /ₘ g i + ∑ j ∈ s, (r j * b j /ₘ g i + r j * a j /ₘ g j),
+      Function.update (fun j => r j * a j %ₘ g j) i ((q + ∑ j ∈ s, r j * b j %ₘ g i) %ₘ g i),
+      ?_, hf.trans ?_⟩
+    · rw [Finset.forall_mem_cons, Function.update_self]
+      refine ⟨degree_modByMonic_lt _ hg.1, fun j hj => ?_⟩
+      rw [Function.update_of_ne (hjs hj).symm]
+      exact degree_modByMonic_lt _ (hg.2 j hj)
+    · rw [Finset.prod_cons, Finset.sum_cons, Function.update_self, Finset.erase_cons, add_mul,
+        add_add_add_comm, ← mul_assoc, ← add_mul, add_comm (_ * g i), ← mul_comm (g i),
+        modByMonic_add_div _ hg.1, add_mul, add_assoc, add_right_inj, Finset.sum_mul,
+        Finset.sum_mul, ← Finset.sum_add_distrib, ← Finset.sum_add_distrib]
+      refine Finset.sum_congr rfl fun j hj => ?_
+      rw [Function.update_of_ne (hjs hj).symm, Finset.erase_cons_of_ne _ (hjs hj),
+        Finset.prod_cons, ← Finset.mul_prod_erase s g hj]
+      simp_rw [← mul_assoc, ← add_mul]
+      refine congrArg (· * _) ?_
+      rw [add_mul, add_mul, ← add_assoc, ← add_assoc, ← add_mul, ← mul_comm (g i),
+        modByMonic_add_div _ hg.1, add_assoc, mul_right_comm (_ /ₘ g j),
+        ← add_mul, add_comm (_ * g j) (_ %ₘ g j), mul_comm (_ /ₘ g j),
+        modByMonic_add_div _ (hg.2 j hj), mul_assoc, mul_assoc, ← mul_add,
+        add_comm, hab j hj, mul_one]
+
+theorem eq_quo_mul_prod_pow_add_sum_rem_mul_prod_pow {ι : Type*} [DecidableEq ι] {s : Finset ι}
+    (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
+    (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j)) (n : ι → ℕ) :
+    ∃ (q : R[X]) (r : (i : ι) → Fin (n i) → R[X]),
+      (∀ i ∈ s, ∀ j, (r i j).degree < (g i).degree) ∧
+      f = q * (∏ i ∈ s, g i ^ n i) +
+        ∑ i ∈ s, ∑ j, r i j * g i ^ j.1 * ∏ k ∈ s.erase i, g k ^ n k := by
+  obtain ⟨q, r, -, hf⟩ := eq_quo_mul_prod_add_sum_rem_mul_prod f
+    (fun i hi => (hg i hi).pow (n i))
+    (hgg.mono' fun i j hij => hij.pow)
+  have hc (i : ι) : ∃ (q' : R[X]) (r' : Fin (n i) → R[X]), i ∈ s →
+      (∀ j, (r' j).degree < (g i).degree) ∧
+      r i = q' * g i ^ (n i) + ∑ j, r' j * g i ^ j.1 :=
+    if hi : i ∈ s then
+      (eq_quo_mul_pow_add_sum_rem_mul_pow (r i) (hg i hi) (n i)).elim
+        fun q' h => h.elim fun r' h => ⟨q', r', fun _ => h⟩
+    else
+      ⟨0, fun _ => 0, hi.elim⟩
+  choose q' r' hr' hr using hc
+  refine ⟨q + ∑ i ∈ s, q' i, r', hr', hf.trans ?_⟩
+  rw [add_mul, add_assoc, add_right_inj, Finset.sum_mul, ← Finset.sum_add_distrib]
+  refine Finset.sum_congr rfl fun i hi => ?_
+  rw [← Finset.mul_prod_erase s _ hi, hr i hi, add_mul, Finset.sum_mul, mul_assoc]
+
+end ManyDenominators
+
+end Mul
+
+section Div
+variable {K : Type*} [CommRing K] [Algebra R[X] K]
+
+theorem mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf {ι : Type*} {s : Finset ι}
+    (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
+    (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j))
+    (n : ι → ℕ) (hgi : ∀ i, Invertible (algebraMap R[X] K (g i))) :
+    ∃ (q : R[X]) (r : (i : ι) → Fin (n i) → R[X]),
+      (∀ i ∈ s, ∀ j, (r i j).degree < (g i).degree) ∧
+      algebraMap R[X] K f * ∏ i ∈ s, ⅟(algebraMap R[X] K (g i)) ^ (n i) =
+        algebraMap R[X] K q + ∑ i ∈ s, ∑ j,
+          algebraMap R[X] K (r i j) * ⅟(algebraMap R[X] K (g i)) ^ (j.1 + 1) := by
+  classical
+  obtain ⟨q, r, hr, hf⟩ := eq_quo_mul_prod_pow_add_sum_rem_mul_prod_pow f hg hgg n
+  refine ⟨q, fun i j => r i j.rev, fun i hi j => hr i hi j.rev, ?_⟩
+  rw [hf, map_add, map_mul, map_prod, add_mul, mul_assoc, ← Finset.prod_mul_distrib]
+  conv =>
+    enter [1, 1, 2, 2, x]
+    rw [map_pow, ← mul_pow, mul_invOf_self, one_pow]
+  rw [Finset.prod_const_one, mul_one, add_right_inj, map_sum, Finset.sum_mul]
+  refine Finset.sum_congr rfl fun i hi => ?_
+  rw [map_sum, Finset.sum_mul, ← Equiv.sum_comp Fin.revPerm]
+  refine Fintype.sum_congr _ _ fun j => ?_
+  rw [Fin.revPerm_apply, map_mul, map_prod, ← Finset.prod_erase_mul s _ hi,
+    ← mul_assoc, ← invOf_pow, mul_invOf_eq_iff_eq_mul_right, mul_assoc, ← Finset.prod_mul_distrib]
+  conv =>
+    enter [1, 2, 2, x]
+    rw [map_pow, ← mul_pow, mul_invOf_self, one_pow]
+  rw [Finset.prod_const_one, mul_one, map_mul, mul_right_comm, eq_comm,
+    ← invOf_pow, mul_invOf_eq_iff_eq_mul_right, mul_assoc]
+  refine congrArg (_ * ·) ?_
+  rw [← map_pow, ← map_pow, ← map_mul, Fin.val_rev, ← pow_add, Nat.sub_add_cancel (by lia)]
+
+end Div
+
+section Field
+
+variable (K : Type*) [Field K] [Algebra R[X] K] [FaithfulSMul R[X] K]
 
 section TwoDenominators
 
@@ -64,21 +194,23 @@ theorem div_eq_quo_add_rem_div_add_rem_div (f : R[X]) {g₁ g₂ : R[X]} (hg₁ 
     ∃ q r₁ r₂ : R[X],
       r₁.degree < g₁.degree ∧
         r₂.degree < g₂.degree ∧ (f : K) / (↑g₁ * ↑g₂) = ↑q + ↑r₁ / ↑g₁ + ↑r₂ / ↑g₂ := by
-  rcases hcoprime with ⟨c, d, hcd⟩
-  refine
-    ⟨f * d /ₘ g₁ + f * c /ₘ g₂, f * d %ₘ g₁, f * c %ₘ g₂, degree_modByMonic_lt _ hg₁,
-      degree_modByMonic_lt _ hg₂, ?_⟩
-  have hg₁' : (↑g₁ : K) ≠ 0 := by
-    norm_cast
-    exact hg₁.ne_zero
-  have hg₂' : (↑g₂ : K) ≠ 0 := by
-    norm_cast
-    exact hg₂.ne_zero
-  have hfc := modByMonic_add_div (f * c) hg₂
-  have hfd := modByMonic_add_div (f * d) hg₁
-  field_simp
-  norm_cast
-  linear_combination -1 * f * hcd + -1 * g₁ * hfc + -1 * g₂ * hfd
+  let g : Bool → R[X] := Bool.rec g₁ g₂
+  have hg (i : Bool) : (g i).Monic := Bool.rec hg₁ hg₂ i
+  have hgg : Set.Pairwise (Finset.univ : Finset Bool) fun i j => IsCoprime (g i) (g j) := by
+    simp [Set.pairwise_insert, g, hcoprime, hcoprime.symm]
+  have hgi (i : Bool) : Invertible (algebraMap R[X] K (g i)) :=
+    invertibleOfNonzero (by simpa using (hg i).ne_zero)
+  obtain ⟨q, r, hr, hf⟩ :=
+    mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf f (fun i _ => hg i) hgg (fun _ => 1) hgi
+  refine ⟨q, r false 0, r true 0,
+    hr false (Finset.mem_univ false) 0, hr true (Finset.mem_univ true) 0, ?_⟩
+  simp_rw [Fintype.prod_bool, Fintype.sum_bool, Fin.sum_univ_one,
+    invOf_eq_inv, Fin.val_zero, zero_add, pow_one, g] at hf
+  rw [Algebra.cast, div_eq_mul_inv, mul_inv_rev, hf,
+    div_eq_mul_inv, div_eq_mul_inv, add_right_comm, add_assoc]
+
+@[deprecated (since := "2026-02-08")]
+alias _root_.div_eq_quo_add_rem_div_add_rem_div := div_eq_quo_add_rem_div_add_rem_div
 
 end TwoDenominators
 
@@ -96,38 +228,26 @@ theorem div_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]} {s 
       (∀ i ∈ s, (r i).degree < (g i).degree) ∧
         ((↑f : K) / ∏ i ∈ s, ↑(g i)) = ↑q + ∑ i ∈ s, (r i : K) / (g i : K) := by
   classical
-  induction s using Finset.induction_on generalizing f with
-  | empty =>
-    refine ⟨f, fun _ : ι => (0 : R[X]), fun i => ?_, by simp⟩
-    rintro ⟨⟩
-  | insert a b hab Hind => ?_
-  obtain ⟨q₀, r₁, r₂, hdeg₁, _, hf : (↑f : K) / _ = _⟩ :=
-    div_eq_quo_add_rem_div_add_rem_div R K f
-      (hg a (b.mem_insert_self a) : Monic (g a))
-      (monic_prod_of_monic _ _ fun i hi => hg i (Finset.mem_insert_of_mem hi) :
-        Monic (∏ i ∈ b, g i))
-      (IsCoprime.prod_right fun i hi =>
-        hcop (Finset.mem_coe.2 (b.mem_insert_self a))
-          (Finset.mem_coe.2 (Finset.mem_insert_of_mem hi)) (by rintro rfl; exact hab hi))
-  obtain ⟨q, r, hrdeg, IH⟩ :=
-    Hind _ (fun i hi => hg i (Finset.mem_insert_of_mem hi))
-      (Set.Pairwise.mono (Finset.coe_subset.2 fun i hi => Finset.mem_insert_of_mem hi) hcop)
-  refine ⟨q₀ + q, fun i => if i = a then r₁ else r i, ?_, ?_⟩
-  · intro i
-    dsimp only
-    split_ifs with h1
-    · cases h1
-      intro
-      exact hdeg₁
-    · intro hi
-      exact hrdeg i (Finset.mem_of_mem_insert_of_ne hi h1)
-  norm_cast at hf IH ⊢
-  rw [Finset.prod_insert hab, hf, IH, Finset.sum_insert hab, if_pos rfl]
-  trans (↑(q₀ + q : R[X]) : K) + (↑r₁ / ↑(g a) + ∑ i ∈ b, (r i : K) / (g i : K))
-  · push_cast
-    ring
-  congr 2
-  refine Finset.sum_congr rfl fun x hxb => ?_
-  grind
+  have hgi (i : s) : Invertible (algebraMap R[X] K (g i)) :=
+    invertibleOfNonzero (by simpa using (hg i.1 i.2).ne_zero)
+  replace hg (i : s) : (g i).Monic := hg i.1 i.2
+  replace hcop : Set.Pairwise (Finset.univ : Finset s) fun i j : s => IsCoprime (g i) (g j) :=
+    fun i _ j _ hij => hcop i.2 j.2 (mt Subtype.ext hij)
+  obtain ⟨q, r, hr, hf⟩ := mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf
+    f (fun i _ => hg i) hcop (fun _ => 1) hgi
+  refine ⟨q, fun i => if hi : i ∈ s then r ⟨i, hi⟩ 0 else 0, fun i hi => ?_, ?_⟩
+  · simpa [hi] using hr ⟨i, hi⟩ (Finset.mem_univ _) 0
+  · simp_rw [Fin.sum_univ_one, Fin.val_zero, zero_add, pow_one,
+      invOf_eq_inv, Finset.prod_inv_distrib] at hf
+    rw [Algebra.cast, div_eq_mul_inv, ← Finset.prod_coe_sort, hf,
+      add_right_inj, eq_comm, ← Finset.sum_coe_sort]
+    exact congr(∑ i : s, $(by simp [div_eq_mul_inv]))
+
+@[deprecated (since := "2026-02-08")]
+alias _root_.div_eq_quo_add_sum_rem_div := div_eq_quo_add_sum_rem_div
 
 end NDenominators
+
+end Field
+
+end Polynomial
