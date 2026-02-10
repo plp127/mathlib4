@@ -148,32 +148,30 @@ variable {K : Type*} [CommRing K] [Algebra R[X] K]
 theorem mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf {ι : Type*} {s : Finset ι}
     (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
     (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j))
-    (n : ι → ℕ) (hgi : ∀ i, Invertible (algebraMap R[X] K (g i))) :
+    (n : ι → ℕ) {gi : ι → K} (hgi : ∀ i ∈ s, gi i * algebraMap R[X] K (g i) = 1) :
     ∃ (q : R[X]) (r : (i : ι) → Fin (n i) → R[X]),
       (∀ i ∈ s, ∀ j, (r i j).degree < (g i).degree) ∧
-      algebraMap R[X] K f * ∏ i ∈ s, ⅟(algebraMap R[X] K (g i)) ^ (n i) =
+      algebraMap R[X] K f * ∏ i ∈ s, gi i ^ (n i) =
         algebraMap R[X] K q + ∑ i ∈ s, ∑ j,
-          algebraMap R[X] K (r i j) * ⅟(algebraMap R[X] K (g i)) ^ (j.1 + 1) := by
+          algebraMap R[X] K (r i j) * gi i ^ (j.1 + 1) := by
   classical
   obtain ⟨q, r, hr, hf⟩ := eq_quo_mul_prod_pow_add_sum_rem_mul_prod_pow f hg hgg n
   refine ⟨q, fun i j => r i j.rev, fun i hi j => hr i hi j.rev, ?_⟩
   rw [hf, map_add, map_mul, map_prod, add_mul, mul_assoc, ← Finset.prod_mul_distrib]
-  conv =>
-    enter [1, 1, 2, 2, x]
-    rw [map_pow, ← mul_pow, mul_invOf_self, one_pow]
-  rw [Finset.prod_const_one, mul_one, add_right_inj, map_sum, Finset.sum_mul]
+  have hc (x : ι) (hx : x ∈ s) : (algebraMap R[X] K) (g x ^ n x) * gi x ^ n x = 1 := by
+    rw [map_pow, ← mul_pow, mul_comm, hgi x hx, one_pow]
+  rw [Finset.prod_congr rfl hc, Finset.prod_const_one,
+    mul_one, add_right_inj, map_sum, Finset.sum_mul]
   refine Finset.sum_congr rfl fun i hi => ?_
   rw [map_sum, Finset.sum_mul, ← Equiv.sum_comp Fin.revPerm]
   refine Fintype.sum_congr _ _ fun j => ?_
   rw [Fin.revPerm_apply, map_mul, map_prod, ← Finset.prod_erase_mul s _ hi,
-    ← mul_assoc, ← invOf_pow, mul_invOf_eq_iff_eq_mul_right, mul_assoc, ← Finset.prod_mul_distrib]
-  conv =>
-    enter [1, 2, 2, x]
-    rw [map_pow, ← mul_pow, mul_invOf_self, one_pow]
-  rw [Finset.prod_const_one, mul_one, map_mul, mul_right_comm, eq_comm,
-    ← invOf_pow, mul_invOf_eq_iff_eq_mul_right, mul_assoc]
+    ← mul_rotate', mul_assoc, ← Finset.prod_mul_distrib,
+    Finset.prod_congr rfl fun x hx => hc x (Finset.mem_of_mem_erase hx),
+    Finset.prod_const_one, mul_one, map_mul, map_pow, mul_left_comm]
   refine congrArg (_ * ·) ?_
-  rw [← map_pow, ← map_pow, ← map_mul, Fin.val_rev, ← pow_add, Nat.sub_add_cancel (by lia)]
+  rw [← mul_one (gi i ^ (j.1 + 1)), ← @one_pow K _ j.rev, ← hgi i hi,
+    mul_pow, ← mul_assoc, ← pow_add, Fin.val_rev, Nat.add_sub_cancel' (by lia)]
 
 end Div
 
@@ -198,14 +196,14 @@ theorem div_eq_quo_add_rem_div_add_rem_div (f : R[X]) {g₁ g₂ : R[X]} (hg₁ 
   have hg (i : Bool) : (g i).Monic := Bool.rec hg₁ hg₂ i
   have hgg : Set.Pairwise (Finset.univ : Finset Bool) fun i j => IsCoprime (g i) (g j) := by
     simp [Set.pairwise_insert, g, hcoprime, hcoprime.symm]
-  have hgi (i : Bool) : Invertible (algebraMap R[X] K (g i)) :=
-    invertibleOfNonzero (by simpa using (hg i).ne_zero)
-  obtain ⟨q, r, hr, hf⟩ :=
-    mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf f (fun i _ => hg i) hgg (fun _ => 1) hgi
+  have hgi : ∀ i ∈ Finset.univ, (algebraMap R[X] K (g i))⁻¹ * algebraMap R[X] K (g i) = 1 :=
+    fun i _ => inv_mul_cancel₀ (by simpa using (hg i).ne_zero)
+  obtain ⟨q, r, hr, hf⟩ := mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf
+    f (fun i _ => hg i) hgg (fun _ => 1) hgi
   refine ⟨q, r false 0, r true 0,
     hr false (Finset.mem_univ false) 0, hr true (Finset.mem_univ true) 0, ?_⟩
   simp_rw [Fintype.prod_bool, Fintype.sum_bool, Fin.sum_univ_one,
-    invOf_eq_inv, Fin.val_zero, zero_add, pow_one, g] at hf
+    Fin.val_zero, zero_add, pow_one, g] at hf
   rw [Algebra.cast, div_eq_mul_inv, mul_inv_rev, hf,
     div_eq_mul_inv, div_eq_mul_inv, add_right_comm, add_assoc]
 
@@ -227,21 +225,14 @@ theorem div_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]} {s 
     ∃ (q : R[X]) (r : ι → R[X]),
       (∀ i ∈ s, (r i).degree < (g i).degree) ∧
         ((↑f : K) / ∏ i ∈ s, ↑(g i)) = ↑q + ∑ i ∈ s, (r i : K) / (g i : K) := by
-  classical
-  have hgi (i : s) : Invertible (algebraMap R[X] K (g i)) :=
-    invertibleOfNonzero (by simpa using (hg i.1 i.2).ne_zero)
-  replace hg (i : s) : (g i).Monic := hg i.1 i.2
-  replace hcop : Set.Pairwise (Finset.univ : Finset s) fun i j : s => IsCoprime (g i) (g j) :=
-    fun i _ j _ hij => hcop i.2 j.2 (mt Subtype.ext hij)
+  have hgi (i : ι) (hi : i ∈ s) : (algebraMap R[X] K (g i))⁻¹ * algebraMap R[X] K (g i) = 1 :=
+    inv_mul_cancel₀ (by simpa using (hg i hi).ne_zero)
   obtain ⟨q, r, hr, hf⟩ := mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf
-    f (fun i _ => hg i) hcop (fun _ => 1) hgi
-  refine ⟨q, fun i => if hi : i ∈ s then r ⟨i, hi⟩ 0 else 0, fun i hi => ?_, ?_⟩
-  · simpa [hi] using hr ⟨i, hi⟩ (Finset.mem_univ _) 0
-  · simp_rw [Fin.sum_univ_one, Fin.val_zero, zero_add, pow_one,
-      invOf_eq_inv, Finset.prod_inv_distrib] at hf
-    rw [Algebra.cast, div_eq_mul_inv, ← Finset.prod_coe_sort, hf,
-      add_right_inj, eq_comm, ← Finset.sum_coe_sort]
-    exact congr(∑ i : s, $(by simp [div_eq_mul_inv]))
+    f hg hcop (fun _ => 1) hgi
+  refine ⟨q, fun i => r i 0, fun i hi => hr i hi 0, ?_⟩
+  simp_rw [Fin.sum_univ_one, Fin.val_zero, zero_add, pow_one, Finset.prod_inv_distrib] at hf
+  simp_rw [Algebra.cast, div_eq_mul_inv]
+  exact hf
 
 @[deprecated (since := "2026-02-08")]
 alias _root_.div_eq_quo_add_sum_rem_div := div_eq_quo_add_sum_rem_div
