@@ -76,7 +76,7 @@ section ManyDenominators
 theorem eq_quo_mul_prod_add_sum_rem_mul_prod {ι : Type*} [DecidableEq ι] {s : Finset ι}
     (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
     (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j)) :
-    ∃ (q : R[X]) (r : (i : ι) → R[X]),
+    ∃ (q : R[X]) (r : ι → R[X]),
       (∀ i ∈ s, (r i).degree < (g i).degree) ∧
       f = q * (∏ i ∈ s, g i) + ∑ i ∈ s, r i * ∏ k ∈ s.erase i, g k := by
   induction s using Finset.cons_induction with
