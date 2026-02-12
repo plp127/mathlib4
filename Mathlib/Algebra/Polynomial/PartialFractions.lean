@@ -151,7 +151,7 @@ theorem mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse {ι : Type*} {s 
     (n : ι → ℕ) {gi : ι → K} (hgi : ∀ i ∈ s, gi i * algebraMap R[X] K (g i) = 1) :
     ∃ (q : R[X]) (r : (i : ι) → Fin (n i) → R[X]),
       (∀ i ∈ s, ∀ j, (r i j).degree < (g i).degree) ∧
-      algebraMap R[X] K f * ∏ i ∈ s, gi i ^ (n i) =
+      algebraMap R[X] K f * ∏ i ∈ s, gi i ^ n i =
         algebraMap R[X] K q + ∑ i ∈ s, ∑ j,
           algebraMap R[X] K (r i j) * gi i ^ (j.1 + 1) := by
   classical
