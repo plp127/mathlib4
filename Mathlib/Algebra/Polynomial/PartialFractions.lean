@@ -251,7 +251,7 @@ open algebraMap
 Then a fraction of the form `f / ∏ i ∈ s, g i` evaluated in a field `K` containing `R[X]`
 can be rewritten as `q + ∑ i ∈ s, r i / g i`, where
 `degree (r i) < degree (g i)`, provided that the `g i` are monic and pairwise coprime. -/
-theorem div_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]} {s : Finset ι}
+theorem div_prod_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]} {s : Finset ι}
     (hg : ∀ i ∈ s, (g i).Monic) (hcop : Set.Pairwise ↑s fun i j => IsCoprime (g i) (g j)) :
     ∃ (q : R[X]) (r : ι → R[X]),
       (∀ i ∈ s, (r i).degree < (g i).degree) ∧
@@ -266,7 +266,7 @@ theorem div_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]} {s 
   exact hf
 
 @[deprecated (since := "2026-02-08")]
-alias _root_.div_eq_quo_add_sum_rem_div := div_eq_quo_add_sum_rem_div
+alias _root_.div_eq_quo_add_sum_rem_div := div_prod_eq_quo_add_sum_rem_div
 
 end NDenominators
 
