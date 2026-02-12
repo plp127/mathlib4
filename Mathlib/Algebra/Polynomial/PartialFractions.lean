@@ -5,12 +5,9 @@ Authors: Kevin Buzzard, Sidharth Hariharan, Aaron Liu
 -/
 module
 
+public import Mathlib.Algebra.Algebra.Basic
 public import Mathlib.Algebra.Polynomial.Div
-public import Mathlib.Logic.Function.Basic
 public import Mathlib.RingTheory.Coprime.Lemmas
-public import Mathlib.RingTheory.Localization.FractionRing
-public import Mathlib.Tactic.FieldSimp
-public import Mathlib.Tactic.LinearCombination
 
 /-!
 
@@ -242,3 +239,4 @@ end NDenominators
 end Field
 
 end Polynomial
+#min_imports
