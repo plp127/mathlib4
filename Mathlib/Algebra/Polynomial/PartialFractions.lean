@@ -145,7 +145,7 @@ end Mul
 section Div
 variable {K : Type*} [CommRing K] [Algebra R[X] K]
 
-theorem mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf {ι : Type*} {s : Finset ι}
+theorem mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse {ι : Type*} {s : Finset ι}
     (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
     (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j))
     (n : ι → ℕ) {gi : ι → K} (hgi : ∀ i ∈ s, gi i * algebraMap R[X] K (g i) = 1) :
@@ -198,7 +198,7 @@ theorem div_eq_quo_add_rem_div_add_rem_div (f : R[X]) {g₁ g₂ : R[X]} (hg₁ 
     simp [Set.pairwise_insert, g, hcoprime, hcoprime.symm]
   have hgi : ∀ i ∈ Finset.univ, (algebraMap R[X] K (g i))⁻¹ * algebraMap R[X] K (g i) = 1 :=
     fun i _ => inv_mul_cancel₀ (by simpa using (hg i).ne_zero)
-  obtain ⟨q, r, hr, hf⟩ := mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf
+  obtain ⟨q, r, hr, hf⟩ := mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse
     f (fun i _ => hg i) hgg (fun _ => 1) hgi
   refine ⟨q, r false 0, r true 0,
     hr false (Finset.mem_univ false) 0, hr true (Finset.mem_univ true) 0, ?_⟩
@@ -227,7 +227,7 @@ theorem div_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]} {s 
         ((↑f : K) / ∏ i ∈ s, ↑(g i)) = ↑q + ∑ i ∈ s, (r i : K) / (g i : K) := by
   have hgi (i : ι) (hi : i ∈ s) : (algebraMap R[X] K (g i))⁻¹ * algebraMap R[X] K (g i) = 1 :=
     inv_mul_cancel₀ (by simpa using (hg i hi).ne_zero)
-  obtain ⟨q, r, hr, hf⟩ := mul_prod_pow_invOf_eq_quo_add_sum_rem_mul_pow_invOf
+  obtain ⟨q, r, hr, hf⟩ := mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse
     f hg hcop (fun _ => 1) hgi
   refine ⟨q, fun i => r i 0, fun i hi => hr i hi 0, ?_⟩
   simp_rw [Fin.sum_univ_one, Fin.val_zero, zero_add, pow_one, Finset.prod_inv_distrib] at hf
