@@ -211,38 +211,6 @@ section Field
 
 variable (K : Type*) [Field K] [Algebra R[X] K] [FaithfulSMul R[X] K]
 
-section TwoDenominators
-
-open scoped algebraMap
-
-/-- Let `R` be an integral domain and `f, g₁, g₂ : R[X]`. Let `g₁` and `g₂` be monic and coprime.
-Then `∃ q, r₁, r₂ : R[X]` such that `f / (g₁ * g₂) = q + r₁ / g₁ + r₂ / g₂` and
-`degree rᵢ < degree gᵢ`, where the equality is taken in a field `K` containing `R[X]`. -/
-theorem div_eq_quo_add_rem_div_add_rem_div (f : R[X]) {g₁ g₂ : R[X]} (hg₁ : g₁.Monic)
-    (hg₂ : g₂.Monic) (hcoprime : IsCoprime g₁ g₂) :
-    ∃ q r₁ r₂ : R[X],
-      r₁.degree < g₁.degree ∧
-        r₂.degree < g₂.degree ∧ (f : K) / (↑g₁ * ↑g₂) = ↑q + ↑r₁ / ↑g₁ + ↑r₂ / ↑g₂ := by
-  let g : Bool → R[X] := Bool.rec g₁ g₂
-  have hg (i : Bool) : (g i).Monic := Bool.rec hg₁ hg₂ i
-  have hgg : Set.Pairwise (Finset.univ : Finset Bool) fun i j => IsCoprime (g i) (g j) := by
-    simp [Set.pairwise_insert, g, hcoprime, hcoprime.symm]
-  have hgi : ∀ i ∈ Finset.univ, (algebraMap R[X] K (g i))⁻¹ * algebraMap R[X] K (g i) = 1 :=
-    fun i _ => inv_mul_cancel₀ (by simpa using (hg i).ne_zero)
-  obtain ⟨q, r, hr, hf⟩ := mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse
-    f (fun i _ => hg i) hgg (fun _ => 1) hgi
-  refine ⟨q, r false 0, r true 0,
-    hr false (Finset.mem_univ false) 0, hr true (Finset.mem_univ true) 0, ?_⟩
-  simp_rw [Fintype.prod_bool, Fintype.sum_bool, Fin.sum_univ_one,
-    Fin.val_zero, zero_add, pow_one, g] at hf
-  rw [Algebra.cast, div_eq_mul_inv, mul_inv_rev, hf,
-    div_eq_mul_inv, div_eq_mul_inv, add_right_comm, add_assoc]
-
-@[deprecated (since := "2026-02-08")]
-alias _root_.div_eq_quo_add_rem_div_add_rem_div := div_eq_quo_add_rem_div_add_rem_div
-
-end TwoDenominators
-
 section NDenominators
 
 open algebraMap
@@ -269,6 +237,31 @@ theorem div_prod_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]
 alias _root_.div_eq_quo_add_sum_rem_div := div_prod_eq_quo_add_sum_rem_div
 
 end NDenominators
+
+section TwoDenominators
+
+open scoped algebraMap
+
+/-- Let `R` be an integral domain and `f, g₁, g₂ : R[X]`. Let `g₁` and `g₂` be monic and coprime.
+Then `∃ q, r₁, r₂ : R[X]` such that `f / (g₁ * g₂) = q + r₁ / g₁ + r₂ / g₂` and
+`degree rᵢ < degree gᵢ`, where the equality is taken in a field `K` containing `R[X]`. -/
+theorem div_eq_quo_add_rem_div_add_rem_div (f : R[X]) {g₁ g₂ : R[X]} (hg₁ : g₁.Monic)
+    (hg₂ : g₂.Monic) (hcoprime : IsCoprime g₁ g₂) :
+    ∃ q r₁ r₂ : R[X],
+      r₁.degree < g₁.degree ∧
+        r₂.degree < g₂.degree ∧ (f : K) / (↑g₁ * ↑g₂) = ↑q + ↑r₁ / ↑g₁ + ↑r₂ / ↑g₂ := by
+  let g : Bool → R[X] := Bool.rec g₂ g₁
+  have hg (i : Bool) (_ : i ∈ Finset.univ) : (g i).Monic := Bool.rec hg₂ hg₁ i
+  have hcoprime : Set.Pairwise (Finset.univ : Finset Bool) fun i j => IsCoprime (g i) (g j) := by
+    simp [g, Set.pairwise_insert, hcoprime, hcoprime.symm]
+  obtain ⟨q, r, hr, hf⟩ := div_prod_eq_quo_add_sum_rem_div K f hg hcoprime
+  refine ⟨q, r true, r false, hr true (Finset.mem_univ true), hr false (Finset.mem_univ false), ?_⟩
+  simpa [g, add_assoc] using hf
+
+@[deprecated (since := "2026-02-08")]
+alias _root_.div_eq_quo_add_rem_div_add_rem_div := div_eq_quo_add_rem_div_add_rem_div
+
+end TwoDenominators
 
 end Field
 
