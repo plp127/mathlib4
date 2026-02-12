@@ -13,25 +13,41 @@ public import Mathlib.RingTheory.Coprime.Lemmas
 
 # Partial fractions
 
+For `f, g : R[X]`, if `g` is expressed as a product `g₁ ^ n₁ * g₂ ^ n₂ * ... * gₙ ^ nₙ`,
+where the `gᵢ` are monic and pairwise coprime, then there is a quotient `q` and
+for each `i` from 1 to n and for each `0 ≤ j < nᵢ` there is a remainder `rᵢⱼ`
+with degree less than the degree of `gᵢ`, such that the fraction `f / g`
+decomposes as `q + ∑ i j, rᵢⱼ / gᵢ ^ (j + 1)`.
+
+Since polynomials do not have a division, the main theorem
+`mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse` is stated in an `R[X]`-algebra `K`
+containing inverses `giᵢ` for each polynomial `gᵢ` occuring in the denominator.
+
+
 These results were formalised by the Xena Project, at the suggestion
 of Patrick Massot.
 
 
-## The main theorem
+## Main results
 
-* `div_eq_quo_add_sum_rem_div`: General partial fraction decomposition theorem for polynomials over
-  an integral domain R :
-  If f, g₁, g₂, ..., gₙ ∈ R[X] and the gᵢs are all monic and pairwise coprime, then ∃ q, r₁, ..., rₙ
-  ∈ R[X] such that f / g₁g₂...gₙ = q + r₁/g₁ + ... + rₙ/gₙ and for all i, deg(rᵢ) < deg(gᵢ).
-
-* The result is formalized here in slightly more generality, using finsets. That is, if ι is an
-  arbitrary index type, g denotes a map from ι to R[X], and if s is an arbitrary finite subset of ι,
-  with g i monic for all i ∈ s and for all i,j ∈ s, i ≠ j → g i is coprime to g j, then we have
-  ∃ q ∈ R[X], r : ι → R[X] such that ∀ i ∈ s, deg(r i) < deg(g i) and
-  f / ∏ g i = q + ∑ (r i) / (g i), where the product and sum are over s.
-
-* The proof is done by proving the two-denominator case and then performing finset induction for an
-  arbitrary (finite) number of denominators.
+* `mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse`: Partial fraction decomposition for
+  polynomials over a commutative ring `R`, the denomiator is a product of powers of
+  monic pairwise coprime polynomials. Division is done in an `R[X]`-algebra `K`
+  containing inverses `gi i` for each `g i` occuring in the denomiator.
+* `eq_quo_mul_prod_pow_add_sum_rem_mul_prod_pow`: Partial fraction decomposition for
+  polynomials over a commutative ring `R`, the denomiator is a product of powers of
+  monic pairwise coprime polynomials. The denominators are multiplied out on both sides
+  and formally cancelled.
+* `eq_quo_mul_prod_add_sum_rem_mul_prod`: Partial fraction decomposition for
+  polynomials over a commutative ring `R`, the denomiator is a product of monic
+  pairwise coprime polynomials. The denominators are multiplied out on both sides
+  and formally cancelled.
+* `div_eq_quo_add_sum_rem_div`: Partial fraction decomposition for polynomials over an
+  integral domain `R`, the denominator is a product of monic pairwise coprime polynomials.
+  Division is done in a field `K` containing `R[X]`.
+* `div_eq_quo_add_rem_div_add_rem_div`: Partial fraction decomposition for polynomials over an
+  integral domain `R`, the denominator is a product of two monic coprime polynomials.
+  Division is done in a field `K` containing `R[X]`.
 
 ## Scope for Expansion
 
@@ -50,6 +66,9 @@ section Mul
 
 section OneDenominator
 
+/-- Let `R` be a commutative ring and `f g : R[X]`. Let `n` be a natural number.
+Then `f` can be written in the form `g i ^ n * (q + ∑ i : Fin n, r i / g i ^ (i + 1))`, where
+`degree (r i) < degree (g i)` and the denominator cancels formally. -/
 theorem eq_quo_mul_pow_add_sum_rem_mul_pow (f : R[X]) {g : R[X]} (hg : g.Monic)
     (n : ℕ) : ∃ (q : R[X]) (r : Fin n → R[X]), (∀ i, (r i).degree < g.degree) ∧
       f = q * g ^ n + ∑ i, r i * g ^ i.1 := by
@@ -70,6 +89,10 @@ end OneDenominator
 
 section ManyDenominators
 
+/-- Let `R` be a commutative ring and `f : R[X]`. Let `s` be a finite index set.
+Let `g i` be a collection of monic and pairwise coprime polynomials indexed by `s`.
+Then `f` can be written in the form `(∏ i ∈ s, g i) * (q + ∑ i ∈ s, r i / g i)`, where
+`degree (r i) < degree (g i)` and the denominator cancels formally. -/
 theorem eq_quo_mul_prod_add_sum_rem_mul_prod {ι : Type*} [DecidableEq ι] {s : Finset ι}
     (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
     (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j)) :
@@ -111,6 +134,11 @@ theorem eq_quo_mul_prod_add_sum_rem_mul_prod {ι : Type*} [DecidableEq ι] {s : 
         modByMonic_add_div _ (hg.2 j hj), mul_assoc, mul_assoc, ← mul_add,
         add_comm, hab j hj, mul_one]
 
+/-- Let `R` be a commutative ring and `f : R[X]`. Let `s` be a finite index set.
+Let `g i` be a collection of monic and pairwise coprime polynomials indexed by `s`,
+and for each `g i` let `n i` be a natural number. Then `f` can be written in the form
+`(∏ i ∈ s, g i ^ n i) * (q + ∑ i ∈ s, ∑ j : Fin (n i), r i j / g i ^ (j + 1))`, where
+`degree (r i j) < degree (g i)` and the denominator cancels formally. -/
 theorem eq_quo_mul_prod_pow_add_sum_rem_mul_prod_pow {ι : Type*} [DecidableEq ι] {s : Finset ι}
     (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
     (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j)) (n : ι → ℕ) :
@@ -142,6 +170,13 @@ end Mul
 section Div
 variable {K : Type*} [CommRing K] [Algebra R[X] K]
 
+/-- Let `R` be a commutative ring and `f : R[X]`. Let `s` be a finite index set.
+Let `g i` be a collection of monic and pairwise coprime polynomials indexed by `s`,
+and for each `g i` let `n i` be a natural number.
+Let `K` be an algebra over `R[X]` containing inverses `gi i` for each `g i`.
+Then a fraction of the form `f * ∏ i ∈ s, gi i ^ n i` can be rewritten as
+`q + ∑ i ∈ s, ∑ j : Fin (n i), r i j * gi i ^ (j + 1)`, where
+`degree (r i j) < degree (g i)`. -/
 theorem mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse {ι : Type*} {s : Finset ι}
     (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
     (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j))
@@ -180,10 +215,9 @@ section TwoDenominators
 
 open scoped algebraMap
 
-/-- Let R be an integral domain and f, g₁, g₂ ∈ R[X]. Let g₁ and g₂ be monic and coprime.
-Then, ∃ q, r₁, r₂ ∈ R[X] such that f / g₁g₂ = q + r₁/g₁ + r₂/g₂ and deg(r₁) < deg(g₁) and
-deg(r₂) < deg(g₂).
--/
+/-- Let `R` be an integral domain and `f, g₁, g₂ : R[X]`. Let `g₁` and `g₂` be monic and coprime.
+Then `∃ q, r₁, r₂ : R[X]` such that `f / (g₁ * g₂) = q + r₁ / g₁ + r₂ / g₂` and
+`degree rᵢ < degree gᵢ`, where the equality is taken in a field `K` containing `R[X]`. -/
 theorem div_eq_quo_add_rem_div_add_rem_div (f : R[X]) {g₁ g₂ : R[X]} (hg₁ : g₁.Monic)
     (hg₂ : g₂.Monic) (hcoprime : IsCoprime g₁ g₂) :
     ∃ q r₁ r₂ : R[X],
@@ -213,10 +247,10 @@ section NDenominators
 
 open algebraMap
 
-/-- Let R be an integral domain and f ∈ R[X]. Let s be a finite index set.
-Then, a fraction of the form f / ∏ (g i) can be rewritten as q + ∑ (r i) / (g i), where
-deg(r i) < deg(g i), provided that the g i are monic and pairwise coprime.
--/
+/-- Let `R` be an integral domain and `f : R[X]`. Let `s` be a finite index set.
+Then a fraction of the form `f / ∏ i ∈ s, g i` evaluated in a field `K` containing `R[X]`
+can be rewritten as `q + ∑ i ∈ s, r i / g i`, where
+`degree (r i) < degree (g i)`, provided that the `g i` are monic and pairwise coprime. -/
 theorem div_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]} {s : Finset ι}
     (hg : ∀ i ∈ s, (g i).Monic) (hcop : Set.Pairwise ↑s fun i j => IsCoprime (g i) (g j)) :
     ∃ (q : R[X]) (r : ι → R[X]),
