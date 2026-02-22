@@ -49,16 +49,12 @@ of Patrick Massot.
   integral domain `R`, the denominator is a product of two monic coprime polynomials.
   Division is done in a field `K` containing `R[X]`.
 
-## Scope for Expansion
-
-* Proving uniqueness of the decomposition
-
 -/
 
 public section
 
 
-variable {R : Type*} [CommRing R] [Nontrivial R]
+variable {R : Type*} [CommRing R]
 
 namespace Polynomial
 
@@ -68,8 +64,9 @@ section OneDenominator
 
 /-- Let `R` be a commutative ring and `f g : R[X]`. Let `n` be a natural number.
 Then `f` can be written in the form `g i ^ n * (q + ∑ i : Fin n, r i / g i ^ (i + 1))`, where
-`degree (r i) < degree (g i)` and the denominator cancels formally. -/
-theorem eq_quo_mul_pow_add_sum_rem_mul_pow (f : R[X]) {g : R[X]} (hg : g.Monic)
+`degree (r i) < degree (g i)` and the denominator cancels formally.
+See `quo_mul_pow_add_sum_rem_mul_pow_unique` for the uniqueness of this representation. -/
+theorem eq_quo_mul_pow_add_sum_rem_mul_pow [Nontrivial R] (f : R[X]) {g : R[X]} (hg : g.Monic)
     (n : ℕ) : ∃ (q : R[X]) (r : Fin n → R[X]), (∀ i, (r i).degree < g.degree) ∧
       f = q * g ^ n + ∑ i, r i * g ^ i.1 := by
   induction n with
@@ -85,6 +82,30 @@ theorem eq_quo_mul_pow_add_sum_rem_mul_pow (f : R[X]) {g : R[X]} (hg : g.Monic)
         modByMonic_add_div q hg]
       simp
 
+/-- Let `R` be a commutative ring and `f g : R[X]`. Let `n` be a natural number.
+Then `f` can be written in the form `g i ^ n * (q + ∑ i : Fin n, r i / g i ^ (i + 1))`
+in at most one way, where `degree (r i) < degree (g i)` and the denominator cancels formally.
+See `eq_quo_mul_pow_add_sum_rem_mul_pow` for the existence of such a representation. -/
+theorem quo_mul_pow_add_sum_rem_mul_pow_unique {f : R[X]} {g : R[X]} (hg : g.Monic) {n : ℕ}
+    {q₁ q₂ : R[X]} {r₁ r₂ : Fin n → R[X]}
+    (hr₁ : ∀ i, (r₁ i).degree < g.degree) (hr₂ : ∀ i, (r₂ i).degree < g.degree)
+    (hf₁ : f = q₁ * g ^ n + ∑ i, r₁ i * g ^ i.1) (hf₂ : f = q₂ * g ^ n + ∑ i, r₂ i * g ^ i.1) :
+    q₁ = q₂ ∧ r₁ = r₂ := by
+  induction n generalizing q₁ q₂ with
+  | zero => exact ⟨by simpa using hf₁.symm.trans hf₂, funext Fin.rec0⟩
+  | succ n ih =>
+    cases r₁ using Fin.snocCases with | _ rs₁ r₁
+    cases r₂ using Fin.snocCases with | _ rs₂ r₂
+    simp only [Fin.sum_univ_castSucc, Fin.snoc_castSucc,
+      Fin.val_castSucc, Fin.snoc_last, Fin.val_last] at hf₁ hf₂
+    rw [← add_rotate', pow_succ', ← mul_assoc, ← add_assoc, ← add_mul, ← mul_comm g] at hf₁ hf₂
+    obtain ⟨hqr, hrs⟩ := ih
+        (fun i => by simpa using hr₁ i.castSucc)
+        (fun i => by simpa using hr₂ i.castSucc) hf₁ hf₂
+    obtain ⟨hq₁, hrr₁⟩ := div_modByMonic_unique q₁ r₁ hg ⟨rfl, by simpa using hr₁ (Fin.last n)⟩
+    obtain ⟨hq₂, hrr₂⟩ := div_modByMonic_unique q₂ r₂ hg ⟨rfl, by simpa using hr₂ (Fin.last n)⟩
+    exact ⟨hq₁.symm.trans (hqr ▸ hq₂), congrArg₂ Fin.snoc hrs (hrr₁.symm.trans (hqr ▸ hrr₂))⟩
+
 end OneDenominator
 
 section ManyDenominators
@@ -92,9 +113,10 @@ section ManyDenominators
 /-- Let `R` be a commutative ring and `f : R[X]`. Let `s` be a finite index set.
 Let `g i` be a collection of monic and pairwise coprime polynomials indexed by `s`.
 Then `f` can be written in the form `(∏ i ∈ s, g i) * (q + ∑ i ∈ s, r i / g i)`, where
-`degree (r i) < degree (g i)` and the denominator cancels formally. -/
-theorem eq_quo_mul_prod_add_sum_rem_mul_prod {ι : Type*} [DecidableEq ι] {s : Finset ι}
-    (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
+`degree (r i) < degree (g i)` and the denominator cancels formally.
+See `quo_mul_prod_add_sum_rem_mul_prod_unique` for the uniqueness of this representation. -/
+theorem eq_quo_mul_prod_add_sum_rem_mul_prod [Nontrivial R] {ι : Type*} [DecidableEq ι]
+    {s : Finset ι} (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
     (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j)) :
     ∃ (q : R[X]) (r : ι → R[X]),
       (∀ i ∈ s, (r i).degree < (g i).degree) ∧
@@ -135,12 +157,80 @@ theorem eq_quo_mul_prod_add_sum_rem_mul_prod {ι : Type*} [DecidableEq ι] {s : 
         add_comm, hab j hj, mul_one]
 
 /-- Let `R` be a commutative ring and `f : R[X]`. Let `s` be a finite index set.
+Let `g i` be a collection of monic and pairwise coprime polynomials indexed by `s`.
+Then `f` can be written in the form `(∏ i ∈ s, g i) * (q + ∑ i ∈ s, r i / g i)`
+in at most one way, where `degree (r i) < degree (g i)` and the denominator cancels formally.
+See `eq_quo_mul_prod_add_sum_rem_mul_prod` for the existence of such a representation. -/
+theorem quo_mul_prod_add_sum_rem_mul_prod_unique {ι : Type*} [DecidableEq ι]
+    {s : Finset ι} {f : R[X]} {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
+    (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j))
+    {q₁ q₂ : R[X]} {r₁ r₂ : ι → R[X]}
+    (hr₁ : ∀ i ∈ s, (r₁ i).degree < (g i).degree) (hr₂ : ∀ i ∈ s, (r₂ i).degree < (g i).degree)
+    (hf₁ : f = q₁ * (∏ i ∈ s, g i) + ∑ i ∈ s, r₁ i * (∏ k ∈ s.erase i, g k))
+    (hf₂ : f = q₂ * (∏ i ∈ s, g i) + ∑ i ∈ s, r₂ i * (∏ k ∈ s.erase i, g k)) :
+    q₁ = q₂ ∧ ∀ i ∈ s, r₁ i = r₂ i := by
+  induction s using Finset.cons_induction generalizing f with
+  | empty => simpa using hf₁.symm.trans hf₂
+  | cons i s hi ih =>
+    rw [Finset.forall_mem_cons] at hg hr₁ hr₂
+    have cop : IsCoprime (g i) (∏ i ∈ s, g i) := by
+      clear *-hgg
+      induction s using Finset.cons_induction with
+      | empty => simp [isCoprime_one_right]
+      | cons j s hj ih =>
+        rw [Finset.prod_cons, IsCoprime.mul_right_iff]
+        refine ⟨hgg (by simp) (by simp) fun hij => hi (by simp [hij]), ih ?_ ?_⟩
+        · exact mt Finset.mem_cons_of_mem hi
+        · exact hgg.mono (SetLike.coe_mono (Finset.cons_subset_cons.2 (Finset.subset_cons hj)))
+    rw [Finset.prod_cons, Finset.sum_cons, Finset.erase_cons] at hf₁ hf₂
+    have hjs {j : ι} (hj : j ∈ s) : i ≠ j := fun hij => hi (hij ▸ hj)
+    simp +contextual only [Finset.erase_cons_of_ne hi (hjs _),
+      Finset.prod_cons, ← mul_left_comm (g i), ← Finset.mul_sum] at hf₁ hf₂
+    rw [add_left_comm, ← mul_add] at hf₁ hf₂
+    have hz := hf₁.symm.trans hf₂
+    rw [← sub_eq_zero, add_sub_add_comm, ← sub_mul, ← mul_sub,
+      ← neg_sub, neg_mul, neg_add_eq_sub, sub_eq_zero] at hz
+    have hgid : g i ∣ r₂ i - r₁ i := cop.dvd_of_dvd_mul_right (hz ▸ dvd_mul_right _ _)
+    rw [add_sub_add_comm, ← sub_mul, mul_add, ← mul_assoc,
+      ← eq_sub_iff_add_eq', ← sub_mul, ← Finset.sum_sub_distrib] at hz
+    simp only [← sub_mul] at hz
+    have hpgd : ∏ i ∈ s, g i ∣ _ := cop.symm.dvd_of_dvd_mul_left (hz.symm ▸ dvd_mul_left _ _)
+    have hdr : (r₂ i - r₁ i).degree < (g i).degree :=
+      (degree_sub_le (r₂ i) (r₁ i)).trans_lt (max_lt hr₂.1 hr₁.1)
+    have hr0 : r₂ i - r₁ i = 0 := (hg.1.not_dvd_of_degree_lt · hdr).mtr hgid
+    have hpm : (∏ i ∈ s, g i).Monic := monic_prod_of_monic s g hg.2
+    have hdp : (∑ i ∈ s, (r₁ i - r₂ i) * ∏ k ∈ s.erase i, g k).degree < (∏ i ∈ s, g i).degree := by
+      refine (degree_sum_le _ _).trans_lt ((Finset.sup_lt_iff ?_).2 ?_)
+      · rw [bot_lt_iff_ne_bot, degree_ne_bot]
+        exact hpm.ne_zero_of_polynomial_ne fun h : r₂ i - r₁ i = g i => lt_irrefl _ (h ▸ hdr)
+      · intro j hj
+        rw [← Finset.mul_prod_erase s g hj, mul_comm (g j), (hg.2 j hj).degree_mul]
+        refine (degree_mul_le (r₁ j - r₂ j) (∏ k ∈ s.erase j, g k)).trans_lt ?_
+        have dnb : (∏ k ∈ s.erase j, g k).degree ≠ ⊥ := by
+          rw [degree_ne_bot]
+          exact (monic_prod_of_monic _ g
+            fun j hj => hg.2 j (Finset.mem_of_mem_erase hj)).ne_zero_of_polynomial_ne
+            fun h : r₂ i - r₁ i = g i => lt_irrefl _ (h ▸ hdr)
+        rw [add_comm, WithBot.add_lt_add_iff_left dnb]
+        exact (degree_sub_le (r₁ j) (r₂ j)).trans_lt (max_lt (hr₁.2 j hj) (hr₂.2 j hj))
+    have hp0 : ∑ i ∈ s, (r₁ i - r₂ i) * ∏ k ∈ s.erase i, g k = 0 :=
+      (hpm.not_dvd_of_degree_lt · hdp).mtr hpgd
+    rw [hr0, hp0, mul_zero, zero_sub, neg_mul, eq_comm, neg_eq_zero,
+      ← mul_rotate, (hpm.mul hg.1).mul_right_eq_zero_iff] at hz
+    simp only [sub_mul, Finset.sum_sub_distrib] at hp0
+    rw [sub_eq_zero] at hz hr0 hp0
+    obtain ⟨-, hrr⟩ := ih hg.2 (hgg.mono (SetLike.coe_mono (Finset.subset_cons hi)))
+      hr₁.2 hr₂.2 rfl congr($hz * ∏ i ∈ s, g i + $hp0)
+    exact ⟨hz, (Finset.forall_mem_cons hi (fun j => r₁ j = r₂ j)).2 ⟨hr0.symm, hrr⟩⟩
+
+/-- Let `R` be a commutative ring and `f : R[X]`. Let `s` be a finite index set.
 Let `g i` be a collection of monic and pairwise coprime polynomials indexed by `s`,
 and for each `g i` let `n i` be a natural number. Then `f` can be written in the form
 `(∏ i ∈ s, g i ^ n i) * (q + ∑ i ∈ s, ∑ j : Fin (n i), r i j / g i ^ (j + 1))`, where
-`degree (r i j) < degree (g i)` and the denominator cancels formally. -/
-theorem eq_quo_mul_prod_pow_add_sum_rem_mul_prod_pow {ι : Type*} [DecidableEq ι] {s : Finset ι}
-    (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
+`degree (r i j) < degree (g i)` and the denominator cancels formally.
+See `quo_mul_prod_pow_add_sum_rem_mul_prod_pow_unique` for the uniqueness of this representation. -/
+theorem eq_quo_mul_prod_pow_add_sum_rem_mul_prod_pow [Nontrivial R] {ι : Type*} [DecidableEq ι]
+    {s : Finset ι} (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
     (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j)) (n : ι → ℕ) :
     ∃ (q : R[X]) (r : (i : ι) → Fin (n i) → R[X]),
       (∀ i ∈ s, ∀ j, (r i j).degree < (g i).degree) ∧
@@ -163,6 +253,43 @@ theorem eq_quo_mul_prod_pow_add_sum_rem_mul_prod_pow {ι : Type*} [DecidableEq �
   refine Finset.sum_congr rfl fun i hi => ?_
   rw [← Finset.mul_prod_erase s _ hi, hr i hi, add_mul, Finset.sum_mul, mul_assoc]
 
+/-- Let `R` be a commutative ring and `f : R[X]`. Let `s` be a finite index set.
+Let `g i` be a collection of monic and pairwise coprime polynomials indexed by `s`,
+and for each `g i` let `n i` be a natural number. Then `f` can be written in the form
+`(∏ i ∈ s, g i ^ n i) * (q + ∑ i ∈ s, ∑ j : Fin (n i), r i j / g i ^ (j + 1))`
+in at most one way, where `degree (r i j) < degree (g i)` and the denominator cancels formally.
+See `eq_quo_mul_prod_pow_add_sum_rem_mul_prod_pow` for the existence of such a representation. -/
+theorem quo_mul_prod_pow_add_sum_rem_mul_prod_pow_unique {ι : Type*} [DecidableEq ι]
+    {s : Finset ι} {f : R[X]} {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
+    (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j)) {n : ι → ℕ}
+    {q₁ q₂ : R[X]} {r₁ r₂ : (i : ι) → Fin (n i) → R[X]}
+    (hr₁ : ∀ i ∈ s, ∀ j, (r₁ i j).degree < (g i).degree)
+    (hr₂ : ∀ i ∈ s, ∀ j, (r₂ i j).degree < (g i).degree)
+    (hf₁ : f = q₁ * (∏ i ∈ s, g i ^ n i) +
+      ∑ i ∈ s, ∑ j, r₁ i j * g i ^ j.1 * ∏ k ∈ s.erase i, g k ^ n k)
+    (hf₂ : f = q₂ * (∏ i ∈ s, g i ^ n i) +
+      ∑ i ∈ s, ∑ j, r₂ i j * g i ^ j.1 * ∏ k ∈ s.erase i, g k ^ n k) :
+    q₁ = q₂ ∧ ∀ i ∈ s, r₁ i = r₂ i := by
+  nontriviality R
+  simp only [← Finset.sum_mul] at hf₁ hf₂
+  have hrd {r : (i : ι) → Fin (n i) → R[X]} (hr : ∀ i ∈ s, ∀ j, (r i j).degree < (g i).degree)
+      (i : ι) (hi : i ∈ s) : (∑ j, r i j * g i ^ j.1).degree < (g i ^ n i).degree := by
+    refine (degree_sum_le _ _).trans_lt ((Finset.sup_lt_iff ?_).2 fun j _ => ?_)
+    · rw [bot_lt_iff_ne_bot, degree_ne_bot]
+      exact ((hg i hi).pow (n i)).ne_zero
+    · refine (degree_mul_le _ _).trans_lt ?_
+      rw [degree_eq_natDegree ((hg i hi).pow j.1).ne_zero, (hg i hi).natDegree_pow,
+        degree_eq_natDegree ((hg i hi).pow (n i)).ne_zero, (hg i hi).natDegree_pow]
+      conv_rhs => rw [← Nat.sub_add_cancel (Nat.one_le_iff_ne_zero.2 j.neZero.ne)]
+      rw [Nat.add_one_mul, Nat.add_comm, Nat.cast_add, ← degree_eq_natDegree (hg i hi).ne_zero]
+      refine WithBot.add_lt_add_of_lt_of_le (WithBot.natCast_ne_bot _) (hr i hi j) ?_
+      exact Nat.cast_le.2 (Nat.mul_le_mul_right _ (Nat.le_sub_one_of_lt j.isLt))
+  obtain ⟨hq, hr⟩ := quo_mul_prod_add_sum_rem_mul_prod_unique
+    (fun i hi => (hg i hi).pow (n i)) (hgg.imp fun i j hij => hij.pow) (hrd hr₁) (hrd hr₂) hf₁ hf₂
+  refine ⟨hq, fun i hi => ?_⟩
+  exact (quo_mul_pow_add_sum_rem_mul_pow_unique (hg i hi) (hr₁ i hi) (hr₂ i hi)
+    rfl (congrArg (0 * g i ^ n i + ·) (hr i hi))).2
+
 end ManyDenominators
 
 end Mul
@@ -175,10 +302,11 @@ Let `g i` be a collection of monic and pairwise coprime polynomials indexed by `
 and for each `g i` let `n i` be a natural number.
 Let `K` be an algebra over `R[X]` containing inverses `gi i` for each `g i`.
 Then a fraction of the form `f * ∏ i ∈ s, gi i ^ n i` can be rewritten as
-`q + ∑ i ∈ s, ∑ j : Fin (n i), r i j * gi i ^ (j + 1)`, where
-`degree (r i j) < degree (g i)`. -/
-theorem mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse {ι : Type*} {s : Finset ι}
-    (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
+`q + ∑ i ∈ s, ∑ j : Fin (n i), r i j * gi i ^ (j + 1)`, where `degree (r i j) < degree (g i)`.
+See `mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse` for the
+uniqueness of this representation. -/
+theorem mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse [Nontrivial R] {ι : Type*}
+    {s : Finset ι} (f : R[X]) {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
     (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j))
     (n : ι → ℕ) {gi : ι → K} (hgi : ∀ i ∈ s, gi i * algebraMap R[X] K (g i) = 1) :
     ∃ (q : R[X]) (r : (i : ι) → Fin (n i) → R[X]),
@@ -205,6 +333,51 @@ theorem mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse {ι : Type*} {s 
   rw [← mul_one (gi i ^ (j.1 + 1)), ← @one_pow K _ j.rev, ← hgi i hi,
     mul_pow, ← mul_assoc, ← pow_add, Fin.val_rev, Nat.add_sub_cancel' (by lia)]
 
+/-- Let `R` be a commutative ring and `f : R[X]`. Let `s` be a finite index set.
+Let `g i` be a collection of monic and pairwise coprime polynomials indexed by `s`,
+and for each `g i` let `n i` be a natural number.
+Let `K` be an algebra over `R[X]` containing inverses `gi i` for each `g i`.
+Then a fraction of the form `f * ∏ i ∈ s, gi i ^ n i` can be rewritten as
+`q + ∑ i ∈ s, ∑ j : Fin (n i), r i j * gi i ^ (j + 1)`
+in at most one way, where `degree (r i j) < degree (g i)`.
+See `mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse` for the
+existence of such a representation. -/
+theorem quo_add_sum_rem_mul_pow_inverse_unique [FaithfulSMul R[X] K] {ι : Type*}
+    {s : Finset ι} {f : R[X]} {g : ι → R[X]} (hg : ∀ i ∈ s, (g i).Monic)
+    (hgg : Set.Pairwise s fun i j => IsCoprime (g i) (g j))
+    {n : ι → ℕ} {gi : ι → K} (hgi : ∀ i ∈ s, gi i * algebraMap R[X] K (g i) = 1)
+    {q₁ q₂ : R[X]} {r₁ r₂ : (i : ι) → Fin (n i) → R[X]}
+    (hr₁ : ∀ i ∈ s, ∀ j, (r₁ i j).degree < (g i).degree)
+    (hr₂ : ∀ i ∈ s, ∀ j, (r₂ i j).degree < (g i).degree)
+    (hf₁ : algebraMap R[X] K f * ∏ i ∈ s, gi i ^ n i =
+      algebraMap R[X] K q₁ + ∑ i ∈ s, ∑ j, algebraMap R[X] K (r₁ i j) * gi i ^ (j.1 + 1))
+    (hf₂ : algebraMap R[X] K f * ∏ i ∈ s, gi i ^ n i =
+      algebraMap R[X] K q₂ + ∑ i ∈ s, ∑ j, algebraMap R[X] K (r₂ i j) * gi i ^ (j.1 + 1)) :
+    q₁ = q₂ ∧ ∀ i ∈ s, r₁ i = r₂ i := by
+  classical
+  suffices hf : ∀ {q : R[X]} {r : (i : ι) → Fin (n i) → R[X]}
+      (hf : algebraMap R[X] K f * ∏ i ∈ s, gi i ^ n i =
+        algebraMap R[X] K q + ∑ i ∈ s, ∑ j, algebraMap R[X] K (r i j) * gi i ^ (j.1 + 1)),
+      f = q * ∏ i ∈ s, g i ^ n i + ∑ i ∈ s, ∑ j : Fin (n i), r i j.rev * g i ^ j.1 *
+        ∏ k ∈ s.erase i, g k ^ n k by
+    obtain ⟨hq, hr⟩ := quo_mul_prod_pow_add_sum_rem_mul_prod_pow_unique hg hgg
+      (fun i hi j => hr₁ i hi j.rev) (fun i hi j => hr₂ i hi j.rev) (hf hf₁) (hf hf₂)
+    exact ⟨hq, fun i hi => funext fun j => j.rev_rev ▸ congrFun (hr i hi) j.rev⟩
+  intro q r hf
+  apply FaithfulSMul.algebraMap_injective R[X] K
+  apply_fun (· * ∏ i ∈ s, algebraMap R[X] K (g i) ^ n i) at hf
+  rw [mul_assoc, ← Finset.prod_mul_distrib] at hf
+  simp +contextual only [← mul_pow, hgi, one_pow, Finset.prod_const_one, mul_one] at hf
+  simp_rw [hf, add_mul, Finset.sum_mul, map_add, map_sum, map_mul, map_prod, map_pow]
+  refine congrArg (_ + ·) (Finset.sum_congr rfl fun i hi => ?_)
+  refine (Equiv.sum_comp Fin.revPerm _).symm.trans (Fintype.sum_congr _ _ fun j => ?_)
+  rw [Fin.revPerm_apply, ← Finset.mul_prod_erase s _ hi, ← mul_assoc,
+    mul_assoc (algebraMap R[X] K (r i j.rev))]
+  refine congrArg (algebraMap R[X] K (r i j.rev) * · * _) ?_
+  rw [← mul_one (gi i ^ (j.rev.1 + 1)), ← @one_pow K _ j, ← hgi i hi,
+    mul_pow, ← mul_assoc, ← pow_add, Fin.val_rev, Nat.add_right_comm, Nat.add_assoc,
+    Nat.sub_add_cancel (by lia), mul_right_comm, ← mul_pow, hgi i hi, one_pow, one_mul]
+
 end Div
 
 section Field
@@ -218,12 +391,16 @@ open algebraMap
 /-- Let `R` be an integral domain and `f : R[X]`. Let `s` be a finite index set.
 Then a fraction of the form `f / ∏ i ∈ s, g i` evaluated in a field `K` containing `R[X]`
 can be rewritten as `q + ∑ i ∈ s, r i / g i`, where
-`degree (r i) < degree (g i)`, provided that the `g i` are monic and pairwise coprime. -/
+`degree (r i) < degree (g i)`, provided that the `g i` are monic and pairwise coprime.
+See `quo_add_sum_rem_div_unique` for the uniqueness of this representation. -/
 theorem div_prod_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]} {s : Finset ι}
     (hg : ∀ i ∈ s, (g i).Monic) (hcop : Set.Pairwise ↑s fun i j => IsCoprime (g i) (g j)) :
     ∃ (q : R[X]) (r : ι → R[X]),
       (∀ i ∈ s, (r i).degree < (g i).degree) ∧
         ((↑f : K) / ∏ i ∈ s, ↑(g i)) = ↑q + ∑ i ∈ s, (r i : K) / (g i : K) := by
+  have : Nontrivial R :=
+    have : Nontrivial R[X] := Module.nontrivial R[X] K
+    Module.nontrivial R R[X]
   have hgi (i : ι) (hi : i ∈ s) : (algebraMap R[X] K (g i))⁻¹ * algebraMap R[X] K (g i) = 1 :=
     inv_mul_cancel₀ (by simpa using (hg i hi).ne_zero)
   obtain ⟨q, r, hr, hf⟩ := mul_prod_pow_inverse_eq_quo_add_sum_rem_mul_pow_inverse
@@ -236,6 +413,31 @@ theorem div_prod_eq_quo_add_sum_rem_div (f : R[X]) {ι : Type*} {g : ι → R[X]
 @[deprecated (since := "2026-02-08")]
 alias _root_.div_eq_quo_add_sum_rem_div := div_prod_eq_quo_add_sum_rem_div
 
+/-- Let `R` be an integral domain and `f : R[X]`. Let `s` be a finite index set.
+Then a fraction of the form `f / ∏ i ∈ s, g i` evaluated in a field `K` containing `R[X]`
+can be rewritten as `q + ∑ i ∈ s, r i / g i` in at most one way, where
+`degree (r i) < degree (g i)`, provided that the `g i` are monic and pairwise coprime.
+See `div_prod_eq_quo_add_sum_rem_div` for the existence of such a representation. -/
+theorem quo_add_sum_rem_div_unique {f : R[X]} {ι : Type*} {g : ι → R[X]} {s : Finset ι}
+    (hg : ∀ i ∈ s, (g i).Monic) (hcop : Set.Pairwise ↑s fun i j => IsCoprime (g i) (g j))
+    {q₁ q₂ : R[X]} {r₁ r₂ : ι → R[X]}
+    (hr₁ : ∀ i ∈ s, (r₁ i).degree < (g i).degree)
+    (hr₂ : ∀ i ∈ s, (r₂ i).degree < (g i).degree)
+    (hf₁ : ((↑f : K) / ∏ i ∈ s, ↑(g i)) = ↑q₁ + ∑ i ∈ s, (r₁ i : K) / (g i : K))
+    (hf₂ : ((↑f : K) / ∏ i ∈ s, ↑(g i)) = ↑q₂ + ∑ i ∈ s, (r₂ i : K) / (g i : K)) :
+    q₁ = q₂ ∧ ∀ i ∈ s, r₁ i = r₂ i := by
+  have : Nontrivial R :=
+    have : Nontrivial R[X] := Module.nontrivial R[X] K
+    Module.nontrivial R R[X]
+  have hgi (i : ι) (hi : i ∈ s) : (algebraMap R[X] K (g i))⁻¹ * algebraMap R[X] K (g i) = 1 :=
+    inv_mul_cancel₀ (by simpa using (hg i hi).ne_zero)
+  refine (quo_add_sum_rem_mul_pow_inverse_unique (f := f) (n := fun _ => 1)
+      hg hcop hgi (fun i hi _ => hr₁ i hi) (fun i hi _ => hr₂ i hi) ?_ ?_).imp_right
+      fun h i hi => congrFun (h i hi) 0 <;>
+    simp_rw [Fin.sum_univ_one, Fin.val_zero, zero_add, pow_one,
+        Finset.prod_inv_distrib, ← div_eq_mul_inv]
+  exacts [hf₁, hf₂]
+
 end NDenominators
 
 section TwoDenominators
@@ -244,7 +446,8 @@ open scoped algebraMap
 
 /-- Let `R` be an integral domain and `f, g₁, g₂ : R[X]`. Let `g₁` and `g₂` be monic and coprime.
 Then `∃ q, r₁, r₂ : R[X]` such that `f / (g₁ * g₂) = q + r₁ / g₁ + r₂ / g₂` and
-`degree rᵢ < degree gᵢ`, where the equality is taken in a field `K` containing `R[X]`. -/
+`degree rᵢ < degree gᵢ`, where the equality is taken in a field `K` containing `R[X]`.
+See `quo_add_rem_div_add_rem_div_unique` for the uniqueness of this representation. -/
 theorem div_eq_quo_add_rem_div_add_rem_div (f : R[X]) {g₁ g₂ : R[X]} (hg₁ : g₁.Monic)
     (hg₂ : g₂.Monic) (hcoprime : IsCoprime g₁ g₂) :
     ∃ q r₁ r₂ : R[X],
@@ -260,6 +463,31 @@ theorem div_eq_quo_add_rem_div_add_rem_div (f : R[X]) {g₁ g₂ : R[X]} (hg₁ 
 
 @[deprecated (since := "2026-02-08")]
 alias _root_.div_eq_quo_add_rem_div_add_rem_div := div_eq_quo_add_rem_div_add_rem_div
+
+/-- Let `R` be an integral domain and `f, g₁, g₂ : R[X]`. Let `g₁` and `g₂` be monic and coprime.
+Then the representation of `f / (g₁ * g₂)` as `q + r₁ / g₁ + r₂ / g₂` for `q r₁ r₂ : R[X]` and
+`degree rᵢ < degree gᵢ` is unique, where the equality is taken in a field `K` containing `R[X]`.
+See `div_eq_quo_add_rem_div_add_rem_div` for the existence of such a representation. -/
+theorem quo_add_rem_div_add_rem_div_unique {f : R[X]} {g₁ g₂ : R[X]} (hg₁ : g₁.Monic)
+    (hg₂ : g₂.Monic) (hcoprime : IsCoprime g₁ g₂)
+    {q₁ q₂ r₁₁ r₁₂ r₂₁ r₂₂ : R[X]}
+    (hr₁₁ : r₁₁.degree < g₁.degree) (hr₁₂ : r₁₂.degree < g₁.degree)
+    (hr₂₁ : r₂₁.degree < g₂.degree) (hr₂₂ : r₂₂.degree < g₂.degree)
+    (hf₁ : (f : K) / (↑g₁ * ↑g₂) = ↑q₁ + ↑r₁₁ / ↑g₁ + ↑r₂₁ / ↑g₂)
+    (hf₂ : (f : K) / (↑g₁ * ↑g₂) = ↑q₂ + ↑r₁₂ / ↑g₁ + ↑r₂₂ / ↑g₂) :
+    q₁ = q₂ ∧ r₁₁ = r₁₂ ∧ r₂₁ = r₂₂ := by
+  let g : Bool → R[X] := Bool.rec g₂ g₁
+  let r₁ : Bool → R[X] := Bool.rec r₂₁ r₁₁
+  let r₂ : Bool → R[X] := Bool.rec r₂₂ r₁₂
+  have hg (i : Bool) (_ : i ∈ Finset.univ) : (g i).Monic := Bool.rec hg₂ hg₁ i
+  have hcoprime : Set.Pairwise (Finset.univ : Finset Bool) fun i j => IsCoprime (g i) (g j) := by
+    simp [g, Set.pairwise_insert, hcoprime, hcoprime.symm]
+  have hr₁ (i : Bool) (_ : i ∈ Finset.univ) : (r₁ i).degree < (g i).degree := Bool.rec hr₂₁ hr₁₁ i
+  have hr₂ (i : Bool) (_ : i ∈ Finset.univ) : (r₂ i).degree < (g i).degree := Bool.rec hr₂₂ hr₁₂ i
+  refine (quo_add_sum_rem_div_unique (f := f) K hg hcoprime hr₁ hr₂ ?_ ?_).imp_right fun h =>
+    ⟨h true (Finset.mem_univ true), h false (Finset.mem_univ false)⟩
+  · simpa [g, r₁, r₂, add_assoc] using hf₁
+  · simpa [g, r₁, r₂, add_assoc] using hf₂
 
 end TwoDenominators
 
