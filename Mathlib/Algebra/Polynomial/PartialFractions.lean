@@ -94,8 +94,8 @@ theorem quo_mul_pow_add_sum_rem_mul_pow_unique {f : R[X]} {g : R[X]} (hg : g.Mon
   induction n generalizing q₁ q₂ with
   | zero => exact ⟨by simpa using hf₁.symm.trans hf₂, funext Fin.rec0⟩
   | succ n ih =>
-    cases r₁ using Fin.snocCases with | _ rs₁ r₁
-    cases r₂ using Fin.snocCases with | _ rs₂ r₂
+    cases r₁ using Fin.snocCases with | snoc rs₁ r₁
+    cases r₂ using Fin.snocCases with | snoc rs₂ r₂
     simp only [Fin.sum_univ_castSucc, Fin.snoc_castSucc,
       Fin.val_castSucc, Fin.snoc_last, Fin.val_last] at hf₁ hf₂
     rw [← add_rotate', pow_succ', ← mul_assoc, ← add_assoc, ← add_mul, ← mul_comm g] at hf₁ hf₂
