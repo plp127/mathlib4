@@ -100,8 +100,8 @@ theorem quo_mul_pow_add_sum_rem_mul_pow_unique {f : R[X]} {g : R[X]} (hg : g.Mon
       Fin.val_castSucc, Fin.snoc_last, Fin.val_last] at hf₁ hf₂
     rw [← add_rotate', pow_succ', ← mul_assoc, ← add_assoc, ← add_mul, ← mul_comm g] at hf₁ hf₂
     obtain ⟨hqr, hrs⟩ := ih
-        (fun i => by simpa using hr₁ i.castSucc)
-        (fun i => by simpa using hr₂ i.castSucc) hf₁ hf₂
+      (fun i => by simpa using hr₁ i.castSucc)
+      (fun i => by simpa using hr₂ i.castSucc) hf₁ hf₂
     obtain ⟨hq₁, hrr₁⟩ := div_modByMonic_unique q₁ r₁ hg ⟨rfl, by simpa using hr₁ (Fin.last n)⟩
     obtain ⟨hq₂, hrr₂⟩ := div_modByMonic_unique q₂ r₂ hg ⟨rfl, by simpa using hr₂ (Fin.last n)⟩
     exact ⟨hq₁.symm.trans (hqr ▸ hq₂), congrArg₂ Fin.snoc hrs (hrr₁.symm.trans (hqr ▸ hrr₂))⟩
