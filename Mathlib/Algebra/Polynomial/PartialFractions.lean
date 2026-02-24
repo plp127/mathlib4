@@ -42,12 +42,29 @@ of Patrick Massot.
   polynomials over a commutative ring `R`, the denomiator is a product of monic
   pairwise coprime polynomials. The denominators are multiplied out on both sides
   and formally cancelled.
-* `div_eq_quo_add_sum_rem_div`: Partial fraction decomposition for polynomials over an
+* `div_prod_eq_quo_add_sum_rem_div`: Partial fraction decomposition for polynomials over an
   integral domain `R`, the denominator is a product of monic pairwise coprime polynomials.
   Division is done in a field `K` containing `R[X]`.
 * `div_eq_quo_add_rem_div_add_rem_div`: Partial fraction decomposition for polynomials over an
   integral domain `R`, the denominator is a product of two monic coprime polynomials.
   Division is done in a field `K` containing `R[X]`.
+
+## Naming
+
+The lemmas in this file proving existence of partial fraction decomposition all have
+conclusions of the form `∃ q r, degree r < degree g ∧ f / g = q + ∑ r / g`.
+The names of these lemmas depict only the final equality `f / g = q + ∑ r / g`.
+They are named structurally, except the bound variable `q` is called `quo` (for quotient)
+and the bound variable `r` is called `rem` (for remainder), since they are the quotient
+and remainder of the division `f / g`.
+For example, `div_prod_eq_quo_add_sum_rem_div` has the conclusion
+```
+∃ q r, (∀ i ∈ s, (r i).degree < (g i).degree) ∧
+  ↑f / ∏ i ∈ s, ↑(g i) = ↑q + ∑ i ∈ s, ↑(r i) / ↑(g i)
+```
+The name of the lemma only shows the final equality, and in order we have
+`/` (`div`), `∏` (`prod`), `=` (`eq`), `q` (`quo`),
+`+` (`add`), `∑` (`sum`), `r i` (`rem`), `/` (`div`).
 
 ## Scope for Expansion
 
