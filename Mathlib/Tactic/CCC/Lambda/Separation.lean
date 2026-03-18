@@ -551,7 +551,7 @@ def detelescopeInterpretation {ι : Type u} (ri : ι → Type w) {tt : Object ι
   | [] => t
   | _ :: _ => detelescopeInterpretation ri _ args.2 t args.1
 
-def detelescopeInterpretation_append {ι : Type u} (ri : ι → Type w) {tt : Object ι}
+theorem detelescopeInterpretation_append {ι : Type u} (ri : ι → Type w) {tt : Object ι}
     (typs₁ typs₂ : List (Object ι))
     (args₁ : typs₁.TProd (Object.read ri)) (args₂ : typs₂.TProd (Object.read ri))
     (t : Object.read ri ((typs₁ ++ typs₂).foldl (fun t s => .hom s t) tt)) :
@@ -973,6 +973,48 @@ def Neutralu.fullSepFun {ι : Type u} [DecidableEq ι] {κ : Type v} {ζ : κ �
         List.length_map, Nat.sub_self]
       rfl)
 
+def readFoldlHomEquiv {ι : Type u} (ri : ι → Type w) {tt : Object ι} (typs : List (Object ι)) :
+    Object.read ri (typs.foldl (fun t s => .hom s t) tt) ≃
+      (((i : Fin typs.length) → typs[i].read ri) → tt.read ri) where
+  toFun := List.rec (fun tt u i => u) (fun typ typs ih tt u us =>
+    ih (.hom typ tt) u (fun i => us i.succ)
+      (us ⟨0, Nat.add_one_pos typs.length⟩)) typs tt
+  invFun := List.rec (fun tt c => c Fin.rec0) (fun typ typs ih tt c =>
+    ih (.hom typ tt) fun us u => c (Fin.cons u us)) typs tt
+  left_inv u := by
+    induction typs generalizing tt with
+    | nil => rfl
+    | cons typ typs ih => exact ih u
+  right_inv c := by
+    induction typs generalizing tt with
+    | nil => exact funext fun i => congrArg c (funext Fin.rec0)
+    | cons typ typs ih =>
+      exact funext fun cs => (congrFun₂ (@ih (.hom typ tt) (fun us u => c (Fin.cons u us)))
+        (fun i => cs i.succ) (cs ⟨0, Nat.add_one_pos typs.length⟩)).trans
+          (congrArg c (funext (Fin.cons (Eq.refl (cs ⟨0, Nat.add_one_pos typs.length⟩))
+            (fun i => Eq.refl (cs i.succ)))))
+
+theorem read_eq_read_telescope_apply {ι : Type u} {κ : Type v}
+    {ζ : κ → Objectu ι} {ctx : List (Object ι)} (tt : Object ι)
+    (x : Neutralu (fun k => (ζ k).toObject₀.toObject) ctx tt) (ri : ι → Type w)
+    (efv : (k : κ) → Object.read ri (ζ k).toObject₀.toObject)
+    (ebv : List.TProd (Object.read ri) ctx) :
+    LambdaTerm.read ri efv ctx ebv
+      x.toNeutral.toLambdaTerm tt x.toNeutral.toTyping =
+    readFoldlHomEquiv ri _
+      (x.telescope.2.2.toNeutral.toLambdaTerm.read ri
+        efv ctx ebv _ x.telescope.2.2.toNeutral.toTyping) fun n =>
+          LambdaTerm.read ri efv ctx ebv
+            (x.telescope.2.1.get n x.telescope.1[n]
+              (Option.mem_def.2 (List.getElem?_eq_getElem n.2))).toNormal.toLambdaTerm
+            x.telescope.1[n]
+            (x.telescope.2.1.get n x.telescope.1[n]
+              (Option.mem_def.2 (List.getElem?_eq_getElem n.2))).toNormal.toTyping := by
+  fun_induction Neutralu.telescope x with
+  | case1 => rfl
+  | case2 _ _ _ _ _ ih => exact congrFun (ih _) _
+  | case3 => rfl
+
 def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} (sc : List (Object ι))
     (hs : sc = ctx.map fun t ↦ t.toObject₀.toObject)
@@ -1018,7 +1060,7 @@ def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
   apply ne_of_apply_ne Prod.snd
   refine calc
       _ = 0 := ?_
-      @Ne (Fin 2) 0 1 := Fin.zero_ne_one
+      @Ne (Fin 2) 0 1 := by decide
       1 = _ := Eq.symm ?_
   · sorry
   · sorry
