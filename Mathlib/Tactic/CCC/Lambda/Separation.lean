@@ -1009,11 +1009,11 @@ theorem read_eq_read_telescope_apply {ι : Type u} {κ : Type v}
               (Option.mem_def.2 (List.getElem?_eq_getElem n.2))).toNormal.toLambdaTerm
             x.telescope.1[n]
             (x.telescope.2.1.get n x.telescope.1[n]
-              (Option.mem_def.2 (List.getElem?_eq_getElem n.2))).toNormal.toTyping := by
-  fun_induction Neutralu.telescope x with
-  | case1 => rfl
-  | case2 _ _ _ _ _ ih => exact congrFun (ih _) _
-  | case3 => rfl
+              (Option.mem_def.2 (List.getElem?_eq_getElem n.2))).toNormal.toTyping :=
+  match x with
+  | .of .. => rfl
+  | .app fn _ => congrFun (read_eq_read_telescope_apply _ fn ri efv ebv) _
+  | .bvar .. => rfl
 
 def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} (sc : List (Object ι))
