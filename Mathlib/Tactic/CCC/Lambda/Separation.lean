@@ -1015,6 +1015,52 @@ theorem read_eq_read_telescope_apply {ι : Type u} {κ : Type v}
   | .app fn _ => congrFun (read_eq_read_telescope_apply _ fn ri efv ebv) _
   | .bvar .. => rfl
 
+theorem snd_detelescope_read_extendSingleHead {ι : Type u} [DecidableEq ι]
+    {κ : Type v} [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)}
+    (sc : List (Object ι)) (hs : sc = ctx.map fun t ↦ t.toObject₀.toObject)
+    (i : ι) (ss : List (Objectu ι))
+    (as : (ss.map fun t ↦ t.toObject₀.toObject).TProd
+      (Normalu (fun k ↦ (ζ k).toObject₀.toObject) sc))
+    (x₁ x₂ : Neutralu (fun k => (ζ k).toObject₀.toObject) sc
+      ((ss.map fun t ↦ t.toObject₀.toObject).foldl (fun t s ↦ .hom s t) (.of i)))
+    (ht : ∃ (h : x₁.telescope.fst = x₂.telescope.fst),
+      h ▸ x₁.telescope.snd.2 = x₂.telescope.snd.2)
+    (f : ι →₀ ℕ)
+    (rk : (k : κ) → (ζ k).toObject₀.toObject.read fun u => Fin (2 ^ f u))
+    (ci : sc.TProd (Object.read fun u => Fin (2 ^ f u)))
+    (fsf : ((o : Fin (Neutralu.detelescope (List.map
+      (fun t : Objectu ι ↦ t.toObject₀.toObject) ss) as x₂).telescope.fst.length) →
+        Object.read (fun u ↦ Fin (2 ^ extendI f i u))
+          (Neutralu.detelescope (List.map (fun t : Objectu ι ↦ t.toObject₀.toObject) ss)
+            as x₂).telescope.fst[o]) → Fin 2)
+    (xs : (o : Fin (Neutralu.detelescope (ss.map
+      fun t : Objectu ι ↦ t.toObject₀.toObject) as x₁).telescope.fst.length) →
+        Object.read (fun u ↦ Fin (2 ^ extendI f i u))
+          (Neutralu.detelescope (ss.map fun t : Objectu ι ↦ t.toObject₀.toObject)
+            as x₁).telescope.fst[o]) :
+    (finProdFinEquiv.symm
+      (Fin.cast (by simp [Nat.pow_succ] : 2 ^ extendI f i i = 2 ^ f i * 2)
+        (readFoldlHomEquiv (fun u ↦ Fin (2 ^ extendI f i u))
+          (Neutralu.detelescope
+            (ss.map fun t : Objectu ι ↦ t.toObject₀.toObject) as x₁).telescope.fst
+          (LambdaTerm.read (fun u ↦ Fin (2 ^ extendI f i u))
+            (fun k ↦ extendSingleFVarHead (Neutralu.detelescope
+              (ss.map fun t : Objectu ι ↦ t.toObject₀.toObject) as x₂) fsf k (rk k)) sc
+            (extendSingleBVarHead (Neutralu.detelescope
+              (ss.map fun t : Objectu ι ↦ t.toObject₀.toObject) as x₂) fsf ci)
+            _ _
+            (Neutralu.detelescope (ss.map fun t : Objectu ι ↦ t.toObject₀.toObject)
+              as x₁).telescope.snd.2.toNeutral.toTyping) xs))).2 =
+    haveI h :
+        (x₁.detelescope (ss.map fun t ↦ t.toObject₀.toObject) as).telescope.fst =
+        (x₂.detelescope (ss.map fun t ↦ t.toObject₀.toObject) as).telescope.fst := by
+      rw [Neutralu.telescope_detelescope, Neutralu.telescope_detelescope]
+      exact congrArg ((ss.map fun t => t.toObject₀.toObject) ++ ·) ht.1
+    fsf fun o => Eq.rec (motive := fun x hx =>
+      Object.read (fun u ↦ Fin (2 ^ extendI f i u)) (x[o]'(h.symm.trans hx ▸ o.2)))
+        (xs (o.cast (congrArg List.length h.symm))) h := by
+  sorry
+
 def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [DecidableEq κ]
     {ζ : κ → Objectu ι} {ctx : List (Objectu ι)} (sc : List (Object ι))
     (hs : sc = ctx.map fun t ↦ t.toObject₀.toObject)
@@ -1062,8 +1108,10 @@ def Neutralu.separateOfArgNe {ι : Type u} [DecidableEq ι] {κ : Type v} [Decid
       _ = 0 := ?_
       @Ne (Fin 2) 0 1 := by decide
       1 = _ := Eq.symm ?_
-  · sorry
-  · sorry
+  · rw [read_eq_read_telescope_apply]
+    sorry
+  · rw [read_eq_read_telescope_apply]
+    sorry
 #exit
 mutual
 
