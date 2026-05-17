@@ -1025,6 +1025,23 @@ theorem read_eq_read_telescope_apply {ι : Type u} {κ : Type v}
   | .app fn _ => congrFun (read_eq_read_telescope_apply _ fn ri efv ebv) _
   | .bvar .. => rfl
 
+theorem IsRightProjection.readFoldlHomEquiv_apply {ι : Type u} [DecidableEq ι]
+    {f : ι →₀ ℕ} {i : ι} {ss : List (Object ι)} {ss' : List (Object ι)}
+    {rk₂ : Object.read (fun u ↦ Fin (2 ^ extendI f i u)) (List.foldr Object.hom (Object.of i) ss)}
+    {rk₂' : Object.read (fun u ↦ Fin (2 ^ extendI f i u))
+      (List.foldl (fun t s => Object.hom s t) (Object.of i) ss')}
+    {fn : ((k : Fin ss.length) → Object.read (fun u ↦ Fin (2 ^ extendI f i u)) ss[k]) → Fin 2}
+    (hss : ss.reverse = ss')
+    (h : IsRightProjection f i ss rk₂ fn) (hrr : hss ▸ List.foldl_reverse.symm ▸ rk₂ = rk₂')
+    (v : (k : Fin ss'.length) →
+      Object.read (fun u ↦ Fin (2 ^ (extendI f i) u)) ss'[k]) :
+    (finProdFinEquiv.symm (Fin.cast (by simp [Nat.pow_succ] : 2 ^ extendI f i i = 2 ^ f i * 2)
+      (readFoldlHomEquiv (fun u => Fin (2 ^ extendI f i u))
+        ss' rk₂' v :))).2 = fn fun k =>
+          Eq.rec (motive := fun x _ => Object.read _ x) (v (Fin.cast (by simp [← hss]) k.rev))
+            (by simp [← hss]; lia) := by
+    sorry
+
 theorem snd_detelescope_read_extendSingleHead {ι : Type u} [DecidableEq ι]
     {κ : Type v} [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)}
     (sc : List (Object ι)) (hs : sc = ctx.map fun t ↦ t.toObject₀.toObject)
@@ -1098,14 +1115,18 @@ theorem snd_detelescope_read_extendSingleHead {ι : Type u} [DecidableEq ι]
     | bvar => rw! [← ht₂, ← htb₂]; rfl
     | app fn arg => exact (nheq₂ _ _ fn arg htb₂.symm .rfl).elim
   revert fsf xs ht
-  rw! (castMode := .all) [ht₁, ht₂,
-    Neutralu.telescope_detelescope (ss.map _) as
+  generalize_proofs
+  rw! (castMode := .all) [ht₁, ht₂]
+  generalize_proofs
+  rw! (castMode := .all) [Neutralu.telescope_detelescope (ss.map _) as
       (Neutralu.detelescope xl₁ xa₁ ((ht₁ ▸ htb₁) ▸ xb₁ :)),
     Neutralu.telescope_detelescope (ss.map _) as
-      (Neutralu.detelescope xl₂ xa₂ ((ht₂ ▸ htb₂) ▸ xb₂ :)),
-    Neutralu.telescope_detelescope xl₁, Neutralu.telescope_detelescope xl₂,
+      (Neutralu.detelescope xl₂ xa₂ ((ht₂ ▸ htb₂) ▸ xb₂ :))]
+  generalize_proofs
+  rw! (castMode := .all) [Neutralu.telescope_detelescope xl₁, Neutralu.telescope_detelescope xl₂,
     tt₁, tt₂]
   dsimp only
+  generalize_proofs
   intro xs fsf ht
   have hxl : xl₁ = xl₂ := by simpa using ht.1
   cases xb₁ with
@@ -1128,8 +1149,27 @@ theorem snd_detelescope_read_extendSingleHead {ι : Type u} [DecidableEq ι]
         rw [← ht.2]
         grind only
     dsimp only
-    generalize_proofs _ _ _ hfee _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    generalize_proofs pk _ _ _ _ _ _ _ _ _ _ _ _ _ p1
     generalize extendWith f i _ _ _ = xx
+    rw! (castMode := .all) [p1]
+    dsimp only
+    generalize_proofs _ _ _ p2
+    rw! (castMode := .all) [p2]
+    dsimp only
+    rw! (castMode := .all) [← pk]
+    dsimp only
+    rw [IsRightProjection.readFoldlHomEquiv_apply]
+    case hss =>
+      exact List.reverse_eq_iff.2 rfl
+    case hrr =>
+      generalize_proofs _ pu
+      rw! (castMode := .all) [pu]
+      dsimp only
+      generalize_proofs pv
+      rw! (castMode := .all) [← pv]
+      dsimp only
+      generalize_proofs
+      rfl
     sorry
   | bvar n _ sat => sorry
 #exit
