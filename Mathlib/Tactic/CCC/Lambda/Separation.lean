@@ -979,8 +979,8 @@ def Neutralu.fullSepFun {ι : Type u} [DecidableEq ι] {κ : Type v} {ζ : κ �
         exact Nat.add_one_pos fn₂.telescope.fst.length⟩)).1 <| by
       cases ht₂; cases (Object.hom.inj huTyp).1
       rw [Fin.getElem_fin]
-      rewrite! [telescope_detelescope, List.getElem_append_right (List.length_map _).le,
-        List.length_map, Nat.sub_self]
+      rewrite! (castMode := .all) [telescope_detelescope,
+        List.getElem_append_right (List.length_map _).le, List.length_map, Nat.sub_self]
       rfl)
 
 def readFoldlHomEquiv {ι : Type u} (ri : ι → Type w) {tt : Object ι} (typs : List (Object ι)) :
@@ -1148,6 +1148,7 @@ theorem snd_detelescope_read_extendSingleHead {ι : Type u} [DecidableEq ι]
         dsimp only at ht ⊢
         rw [← ht.2]
         grind only
+    stop
     dsimp only
     generalize_proofs pk _ _ _ _ _ _ _ _ _ _ _ _ _ p1
     generalize extendWith f i _ _ _ = xx
