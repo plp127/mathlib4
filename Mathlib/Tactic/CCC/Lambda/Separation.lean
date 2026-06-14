@@ -16,6 +16,8 @@ Zap. Nauchn. Sem. LOMI, 1981, Volume 105, 174–194 -/
 
 universe u v w r
 
+theorem Fin.castAdd_eq_castLE {n m : Nat} : Fin.castAdd m = Fin.castLE (Nat.le_add_right n m) := rfl
+
 theorem List.TProd.get_ext {ι : Type u} {α : ι → Type v} {l : List ι}
     {t₁ t₂ : l.TProd α} (h : ∀ n i hi, t₁.get n i hi = t₂.get n i hi) : t₁ = t₂ := by
   induction l with
@@ -1004,6 +1006,46 @@ def readFoldlHomEquiv {ι : Type u} (ri : ι → Type w) {tt : Object ι} (typs 
           (congrArg c (funext (Fin.cons (Eq.refl (cs ⟨0, Nat.add_one_pos typs.length⟩))
             (fun i => Eq.refl (cs i.succ)))))
 
+theorem readFoldlHomEquiv_empty_apply {ι : Type u} {ri : ι → Type w} {tt : Object ι}
+    (x : Object.read ri tt) (p : (i : Fin 0) → Object.read ri [][i]) :
+    readFoldlHomEquiv ri [] x p = x := rfl
+
+theorem readFoldlHomEquiv_cons_apply {ι : Type u} {ri : ι → Type w} {tt : Object ι}
+    {t : Object ι} {typs : List (Object ι)}
+    (x : Object.read ri (typs.foldl (fun t s => .hom s t) (.hom t tt)))
+    (p : (i : Fin (typs.length + 1)) → Object.read ri (t :: typs)[i]) :
+    readFoldlHomEquiv ri (t :: typs) x p =
+      readFoldlHomEquiv ri typs x (fun i => p i.succ) (p 0) := rfl
+
+theorem readFoldlHomEquiv_append_apply {ι : Type u} {ri : ι → Type w} {tt : Object ι}
+    {typs₁ : List (Object ι)} {typs₂ : List (Object ι)}
+    (x : Object.read ri ((typs₁ ++ typs₂).foldl (fun t s => .hom s t) tt))
+    (p : (i : Fin (typs₁ ++ typs₂).length) → Object.read ri (typs₁ ++ typs₂)[i]) :
+    readFoldlHomEquiv ri (typs₁ ++ typs₂) x p = readFoldlHomEquiv ri typs₁
+      (readFoldlHomEquiv ri typs₂ (List.foldl_append ▸ x) fun i =>
+        Eq.rec (motive := fun o _ => Object.read ri o)
+          (p (Fin.cast List.length_append.symm (i.natAdd typs₁.length))) (by simp))
+      fun i => Eq.rec (motive := fun o _ => Object.read ri o)
+        (p (Fin.cast List.length_append.symm (i.castAdd typs₂.length))) (by simp) := by
+  induction typs₁ generalizing tt with
+  | nil =>
+    rw [readFoldlHomEquiv_empty_apply]
+    refine congrArg (readFoldlHomEquiv ri typs₂ x) (funext fun i => eq_of_heq ?_)
+    refine (heq_eqRec_iff (motive := fun o _ => Object.read ri o)).2 ?_
+    apply congr_arg_heq
+    simp
+  | cons t typs₁ ih =>
+    refine (congrFun (ih x (fun i => p i.succ))
+      (p (0 : Fin ((typs₁ ++ typs₂).length + 1)))).trans ?_
+    rw [readFoldlHomEquiv_cons_apply]
+    refine congrFun (congr (congrArg _ (congrArg _ ?_)) ?_) _ <;>
+      · funext i
+        apply eq_of_heq
+        refine (eqRec_heq_iff_heq (motive := fun o _ => Object.read ri o)).2 ?_
+        refine (heq_eqRec_iff_heq (motive := fun o _ => Object.read ri o)).2 ?_
+        apply congr_arg_heq
+        grind
+
 theorem read_eq_read_telescope_apply {ι : Type u} {κ : Type v}
     {ζ : κ → Objectu ι} {ctx : List (Object ι)} (tt : Object ι)
     (x : Neutralu (fun k => (ζ k).toObject₀.toObject) ctx tt) (ri : ι → Type w)
@@ -1025,7 +1067,7 @@ theorem read_eq_read_telescope_apply {ι : Type u} {κ : Type v}
   | .app fn _ => congrFun (read_eq_read_telescope_apply _ fn ri efv ebv) _
   | .bvar .. => rfl
 
-theorem IsRightProjection.readFoldlHomEquiv_apply {ι : Type u} [DecidableEq ι]
+theorem IsRightProjection.finProdFinEquiv_symm_readFoldlHomEquiv_apply {ι : Type u} [DecidableEq ι]
     {f : ι →₀ ℕ} {i : ι} {ss : List (Object ι)} {ss' : List (Object ι)}
     {rk₂ : Object.read (fun u ↦ Fin (2 ^ extendI f i u)) (List.foldr Object.hom (Object.of i) ss)}
     {rk₂' : Object.read (fun u ↦ Fin (2 ^ extendI f i u))
@@ -1036,12 +1078,11 @@ theorem IsRightProjection.readFoldlHomEquiv_apply {ι : Type u} [DecidableEq ι]
     (v : (k : Fin ss'.length) →
       Object.read (fun u ↦ Fin (2 ^ (extendI f i) u)) ss'[k]) :
     (finProdFinEquiv.symm (Fin.cast (by simp [Nat.pow_succ] : 2 ^ extendI f i i = 2 ^ f i * 2)
-      (readFoldlHomEquiv (fun u => Fin (2 ^ extendI f i u))
-        ss' rk₂' v :))).2 = fn fun k =>
-          Eq.rec (motive := fun x _ => Object.read _ x) (v (Fin.cast (by simp [← hss]) k.rev))
-            (by simp [← hss]; lia) := by
+      (readFoldlHomEquiv (fun u => Fin (2 ^ extendI f i u)) ss' rk₂' v :))).2 = fn fun k =>
+        Eq.rec (motive := fun x _ => Object.read _ x) (v (Fin.cast (by simp [← hss]) k.rev))
+          (by simp [← hss]; lia) := by
     sorry
-
+#exit
 theorem snd_detelescope_read_extendSingleHead {ι : Type u} [DecidableEq ι]
     {κ : Type v} [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)}
     (sc : List (Object ι)) (hs : sc = ctx.map fun t ↦ t.toObject₀.toObject)
