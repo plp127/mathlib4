@@ -1075,14 +1075,58 @@ theorem IsRightProjection.finProdFinEquiv_symm_readFoldlHomEquiv_apply {ι : Typ
     {fn : ((k : Fin ss.length) → Object.read (fun u ↦ Fin (2 ^ extendI f i u)) ss[k]) → Fin 2}
     (hss : ss.reverse = ss')
     (h : IsRightProjection f i ss rk₂ fn) (hrr : hss ▸ List.foldl_reverse.symm ▸ rk₂ = rk₂')
-    (v : (k : Fin ss'.length) →
-      Object.read (fun u ↦ Fin (2 ^ (extendI f i) u)) ss'[k]) :
+    (v : (k : Fin ss'.length) → Object.read (fun u ↦ Fin (2 ^ (extendI f i) u)) ss'[k]) :
     (finProdFinEquiv.symm (Fin.cast (by simp [Nat.pow_succ] : 2 ^ extendI f i i = 2 ^ f i * 2)
       (readFoldlHomEquiv (fun u => Fin (2 ^ extendI f i u)) ss' rk₂' v :))).2 = fn fun k =>
         Eq.rec (motive := fun x _ => Object.read _ x) (v (Fin.cast (by simp [← hss]) k.rev))
           (by simp [← hss]; lia) := by
-    sorry
-#exit
+  induction ss' using List.reverseRec generalizing ss with
+  | nil =>
+    cases List.reverse_eq_nil_iff.1 hss
+    dsimp at hrr
+    cases hrr
+    rw [readFoldlHomEquiv_empty_apply, h]
+    exact congrArg fn (funext Fin.rec0)
+  | append_singleton ss' t' ih =>
+    cases ss with
+    | nil => simp at hss
+    | cons t ss =>
+      obtain ⟨⟨rfl, hss⟩, rfl⟩ : ∃ p : t = t' ∧ ss.reverse = ss', (by simp [p]) = hss := by
+        refine ⟨?_, rfl⟩
+        rwa [List.reverse_eq_append_iff, List.reverse_singleton,
+          List.singleton_append, List.cons_eq_cons, ← List.reverse_eq_iff] at hss
+      rw [readFoldlHomEquiv_append_apply, readFoldlHomEquiv_cons_apply,
+        readFoldlHomEquiv_empty_apply]
+      rw! (castMode := .all) [← Fin.mk_zero, Fin.natAdd_mk,
+        Fin.cast_mk, Nat.add_zero ss'.length]
+      specialize h (Eq.rec (motive := fun o _ => Object.read _ o)
+        (v ⟨ss'.length, by simp⟩) (by simp))
+      refine (ih hss h ?_ _).trans ?_
+      · rw [← hrr, ← heq_iff_eq]
+        refine eqRec_heq_iff_heq.2 (eqRec_heq_iff_heq.2 ?_)
+        apply dcongr_heq
+        · refine eqRec_heq_iff_heq.2 (heq_eqRec_iff_heq.2 ?_)
+          rfl
+        · intro _ _ _
+          rw [← hss, List.foldl_reverse]
+        · intro _ _
+          refine heq_eqRec_iff_heq.2 (heq_eqRec_iff_heq.2 (heq_eqRec_iff_heq.2 ?_))
+          rfl
+      · refine congrArg fn (funext fun i => ?_)
+        cases i using Fin.cases with
+        | zero =>
+          rw [Fin.cases_zero, ← heq_iff_eq]
+          refine eqRec_heq_iff_heq.2 (heq_eqRec_iff_heq.2 ?_)
+          apply congr_arg_heq
+          ext
+          simp [List.length_reverse.symm.trans (congrArg List.length hss)]
+        | succ i =>
+          rw [Fin.cases_succ, ← heq_iff_eq]
+          refine eqRec_heq_iff_heq.2 (eqRec_heq_iff_heq.2 (heq_eqRec_iff_heq.2 ?_))
+          apply congr_arg_heq
+          ext
+          simp
+
 theorem snd_detelescope_read_extendSingleHead {ι : Type u} [DecidableEq ι]
     {κ : Type v} [DecidableEq κ] {ζ : κ → Objectu ι} {ctx : List (Objectu ι)}
     (sc : List (Object ι)) (hs : sc = ctx.map fun t ↦ t.toObject₀.toObject)
@@ -1131,6 +1175,41 @@ theorem snd_detelescope_read_extendSingleHead {ι : Type u} [DecidableEq ι]
     fsf fun o => Eq.rec (motive := fun x hx =>
       Object.read (fun u ↦ Fin (2 ^ extendI f i u)) (x[o]'(h.symm.trans hx ▸ o.2)))
         (xs (o.cast (congrArg List.length h.symm))) h := by
+  have (eq := hfsfrev) fsfrev : ((o : Fin (Neutralu.detelescope (List.map
+      (fun t : Objectu ι ↦ t.toObject₀.toObject) ss) as
+        (ht₂ ▸ x₂ :)).telescope.fst.reverse.length) →
+          Object.read (fun u ↦ Fin (2 ^ extendI f i u))
+            (Neutralu.detelescope (List.map (fun t : Objectu ι ↦ t.toObject₀.toObject) ss)
+              as (ht₂ ▸ x₂ :)).telescope.fst.reverse[o]) → Fin 2 := fun os =>
+    fsf fun o => Eq.rec (motive := fun x _ => Object.read _ x)
+        (os (o.cast (by simp)).rev) <| by
+      rw [Fin.getElem_fin, Fin.getElem_fin, List.getElem_reverse]
+      congr 1
+      grind
+  have hfsf : fsf = fun os => fsfrev fun o =>
+        Eq.rec (motive := fun x _ => Object.read _ x) (os (o.rev.cast (by simp))) <| by
+      rw [Fin.getElem_fin, Fin.getElem_fin, List.getElem_reverse]
+      congr 1
+      grind := by
+    rw [hfsfrev]
+    refine funext fun os => congrArg fsf (funext fun o => ?_)
+    apply eq_of_heq
+    refine (heq_eqRec_iff_heq.2 (heq_eqRec_iff_heq.2 ?_))
+    rw [Fin.rev_rev, Fin.cast_cast, Fin.cast_refl, id_def]
+  refine (IsRightProjection.finProdFinEquiv_symm_readFoldlHomEquiv_apply
+    (rk₂ := ?_) ?_ ?_ ?_ _).trans
+    ((congrArg fsfrev (funext fun i => ?_)).trans (congrFun hfsf _).symm)
+  · sorry
+  · rw [List.reverse_reverse, Neutralu.telescope_detelescope, Neutralu.telescope_detelescope]
+    subst ht₁ ht₂
+    exact congrArg ((ss.map fun t => t.toObject₀.toObject) ++ ·) ht.1.symm
+  · sorry
+  · sorry
+  · apply eq_of_heq
+    refine (eqRec_heq_iff_heq.2 (heq_eqRec_iff_heq.2 (heq_eqRec_iff_heq.2 ?_)))
+    apply congr_arg_heq
+    rw [Fin.cast_cast]
+  stop
   obtain ⟨xl₁, xa₁, tb₁, xb₁, htb₁, rfl, nheq₁⟩ : ∃ l a tb,
       ∃ (b : Neutralu (fun k ↦ (ζ k).toObject₀.toObject) sc tb)
         (htb : tb = List.foldl (fun t s ↦ .hom s t) tx₁ l),
